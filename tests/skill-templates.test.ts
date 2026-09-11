@@ -96,7 +96,9 @@ test("writeSkillFromTemplate writes SKILL.md and refuses overwrite and traversal
   }
 });
 
-/** Fake pi editor context that records `setEditorText` and notifies. */
+/**
+ * Fake pi editor context that records `setEditorText` and notifies.
+ */
 function mockEditorCtx(initialText = "") {
   let editorText = initialText;
   const notifications: Array<{ message: string; level: string }> = [];

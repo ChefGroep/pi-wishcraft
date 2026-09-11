@@ -8,7 +8,9 @@ const welcomeProbe = fileURLToPath(
   new URL("./fixtures/welcome-render-probe.ts", import.meta.url),
 );
 
-/** Spawn the welcome-box probe with `NO_COLOR` set, empty, or unset. */
+/**
+ * Spawn the welcome-box probe with `NO_COLOR` set, empty, or unset.
+ */
 function spawnWelcomeBox(noColor: string | undefined) {
   const env = { ...process.env };
   if (noColor === undefined) delete env.NO_COLOR;
@@ -22,7 +24,9 @@ function spawnWelcomeBox(noColor: string | undefined) {
 
 // colors.ts probes NO_COLOR lazily and caches the result per module instance,
 // so each case imports a fresh copy via a cache-busting query.
-/** Import `colors.ts` with a unique query so `NO_COLOR` is re-read. */
+/**
+ * Import `colors.ts` with a unique query so `NO_COLOR` is re-read.
+ */
 async function importFreshColors(nocache: string | undefined) {
   const url = new URL(`../src/theme/colors.ts`, import.meta.url);
   url.searchParams.set("case", String(nocache));
@@ -30,7 +34,9 @@ async function importFreshColors(nocache: string | undefined) {
   return mod as typeof import("../src/theme/colors.ts");
 }
 
-/** Run `fn` with `NO_COLOR` set, empty, or deleted, then restore it. */
+/**
+ * Run `fn` with `NO_COLOR` set, empty, or deleted, then restore it.
+ */
 function withNoColor<T>(value: string | undefined, run: () => T): T {
   const original = process.env.NO_COLOR;
   try {

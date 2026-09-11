@@ -55,11 +55,16 @@ import {
 
 const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*m/g;
 
+/**
+ * Remove ANSI SGR sequences from a rendered segment string.
+ */
 function stripAnsi(text: string): string {
   return text.replace(ANSI_ESCAPE_RE, "");
 }
 
-/** Index of the first visible (non-escape) character in a rendered string. */
+/**
+ * Index of the first visible (non-escape) character in a rendered string.
+ */
 function firstVisibleCharIndex(content: string): number {
   for (let i = 0; i < content.length; i++) {
     if (content[i] === "\x1b") {
@@ -160,7 +165,9 @@ export const SEGMENTS: Record<BuiltinStatusLineSegmentId, StatusLineSegment> = {
   extension_statuses: extensionStatusesSegment,
 };
 
-/** Render one status segment; on failure keep the footer and show `!id`. */
+/**
+ * Render one status segment; on failure keep the footer and show `!id`.
+ */
 export function renderSegment(
   id: StatusLineSegmentId,
   ctx: SegmentContext,

@@ -27,18 +27,24 @@ const GRADIENT_COLORS = [
   "\x1b[38;5;51m",
 ];
 
-/** Wrap `text` in bold SGR, or return it unchanged when color is off. */
+/**
+ * Wrap `text` in bold SGR, or return it unchanged when color is off.
+ */
 function bold(text: string): string {
   if (!colorEnabled()) return text;
   return `\x1b[1m${text}\x1b[22m`;
 }
 
-/** Dim `text` with the separator color; skip reset when color is off. */
+/**
+ * Dim `text` with the separator color; skip reset when color is off.
+ */
 export function dim(text: string): string {
   return getFgAnsiCode("sep") + text + (colorEnabled() ? ansi.reset : "");
 }
 
-/** Colorize a logo line with the welcome gradient, or return it plain. */
+/**
+ * Colorize a logo line with the welcome gradient, or return it plain.
+ */
 function gradientLine(line: string): string {
   if (!colorEnabled()) return line;
   const reset = ansi.reset;

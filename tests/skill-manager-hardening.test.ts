@@ -10,7 +10,9 @@ import {
 } from "../src/extension/skills/skill-manager.ts";
 import type { SkillEntry } from "../src/extension/skills/skill-registry.ts";
 
-/** Run `fn` with `PI_CODING_AGENT_DIR` pointed at `agentDir`. */
+/**
+ * Run `fn` with `PI_CODING_AGENT_DIR` pointed at `agentDir`.
+ */
 function withAgentDir<T>(agentDir: string, fn: () => T): T {
   const previous = process.env.PI_CODING_AGENT_DIR;
   process.env.PI_CODING_AGENT_DIR = agentDir;
@@ -162,7 +164,9 @@ test("isContainedInSkillRoots rejects a skills root that realpaths to cwd", () =
   }
 });
 
-/** Build a prompts-category directory skill for delete-guard tests. */
+/**
+ * Build a prompts-category directory skill for delete-guard tests.
+ */
 function promptDirEntry(filePath: string, baseDir: string, name: string): SkillEntry {
   return {
     name,
