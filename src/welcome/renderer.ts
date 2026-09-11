@@ -28,6 +28,7 @@ const GRADIENT_COLORS = [
 ];
 
 function bold(text: string): string {
+  if (!colorEnabled()) return text;
   return `\x1b[1m${text}\x1b[22m`;
 }
 
@@ -36,6 +37,7 @@ export function dim(text: string): string {
 }
 
 function gradientLine(line: string): string {
+  if (!colorEnabled()) return line;
   const reset = ansi.reset;
   let result = "";
   let colorIdx = 0;
