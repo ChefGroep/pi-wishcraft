@@ -111,7 +111,7 @@ test("isContainedInSkillRoots rejects a skills root that realpaths outside cwd a
     const agentDir = join(root, "agent");
     const cwd = join(root, "project");
     const home = join(root, "home");
-    mkdirSync(join(cwd, "other"), { recursive: true });
+    mkdirSync(cwd, { recursive: true });
     mkdirSync(home, { recursive: true });
     writeFileSync(join(home, "SKILL.md"), "# evil\n", "utf8");
     try {
@@ -159,6 +159,30 @@ test("deleteSkillEntry recursively removes a catalogued prompts directory", () =
     withAgentDir(agentDir, () => {
       deleteSkillEntry(promptDirEntry(filePath, promptDir, "demo"), cwd);
       assert.equal(existsSync(promptDir), false);
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("deleteSkillEntry refuses paths outside skill roots", () => {
+  const root = mkdtempSync(join(tmpdir(), "wishcraft-skills-"));
+  try {
+    const agentDir = join(root, "agent");
+    const cwd = join(root, "project");
+    const outside = join(root, "outside", "evil");
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(outside, { recursive: true });
+    const filePath = join(outside, "SKILL.md");
+    writeFileSync(filePath, "# evil\n", "utf8");
+
+    withAgentDir(agentDir, () => {
+      assert.throws(
+        () => deleteSkillEntry(promptDirEntry(filePath, outside, "evil"), cwd),
+        /refusing to delete outside skill roots/,
+      );
+      assert.equal(existsSync(filePath), true);
+      assert.equal(existsSync(outside), true);
     });
   } finally {
     rmSync(root, { recursive: true, force: true });
