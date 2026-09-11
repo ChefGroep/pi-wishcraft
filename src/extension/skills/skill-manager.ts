@@ -124,12 +124,8 @@ function containmentRoots(cwd: string): string[] {
 export function isContainedInSkillRoots(target: string, cwd: string): boolean {
   const parents = trustedParentReals(cwd);
   if (parents.length === 0) return false;
-  let real: string;
-  try {
-    real = realpathSync(target);
-  } catch {
-    return false;
-  }
+  const real = realpathOrNull(target);
+  if (!real) return false;
   return containmentRoots(cwd).some((root) => {
     const realRoot = realpathOrNull(root);
     if (!realRoot) return false;
@@ -153,15 +149,14 @@ function isRecursiveDirectoryDelete(entry: SkillEntry): boolean {
 
 /** Remove a catalogued skill; recursive for directory skills under skills/prompts. */
 export function deleteSkillEntry(entry: SkillEntry, cwd: string): void {
-  if (isRecursiveDirectoryDelete(entry)) {
-    if (!isContainedInSkillRoots(entry.baseDir, cwd)) {
-      throw new Error(`refusing to delete outside skill roots: ${entry.baseDir}`);
-    }
+  const recursive = isRecursiveDirectoryDelete(entry);
+  const target = recursive ? entry.baseDir : entry.filePath;
+  if (!isContainedInSkillRoots(target, cwd)) {
+    throw new Error(`refusing to delete outside skill roots: ${target}`);
+  }
+  if (recursive) {
     rmSync(entry.baseDir, { recursive: true, force: true });
     return;
-  }
-  if (!isContainedInSkillRoots(entry.filePath, cwd)) {
-    throw new Error(`refusing to delete outside skill roots: ${entry.filePath}`);
   }
   rmSync(entry.filePath, { force: true });
 }

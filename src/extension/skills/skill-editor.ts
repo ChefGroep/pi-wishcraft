@@ -4,7 +4,7 @@
  * EDITOR value cannot inject extra shell.
  */
 
-export function shellQuote(value: string): string {
+function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
