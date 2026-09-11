@@ -10,6 +10,7 @@ import type { SelectItem } from "@earendil-works/pi-tui";
 import { getAgentPath } from "../../paths/agent-dirs.ts";
 import { showSelectOverlay } from "../ui/overlay-chrome.ts";
 import { invalidateSkillCache } from "./skill-registry.ts";
+import { editorCommand } from "./skill-editor.ts";
 
 export const SKILL_TEMPLATE_IDS = [
   "standard",
@@ -53,6 +54,9 @@ export function isSkillTemplateId(value: string): value is SkillTemplateId {
   return (SKILL_TEMPLATE_IDS as readonly string[]).includes(value);
 }
 
+/**
+ * Normalize and validate a skill directory name for `/skills new`.
+ */
 export function sanitizeSkillName(raw: string): string {
   const trimmed = raw.trim().toLowerCase().replace(/_/g, "-");
   if (!trimmed) {
@@ -75,6 +79,9 @@ export function sanitizeSkillName(raw: string): string {
   return trimmed;
 }
 
+/**
+ * Parse `/skills new` args into an optional skill name and template id.
+ */
 export function parseSkillsNewArgs(args: string): {
   name?: string;
   template: SkillTemplateId;
@@ -96,6 +103,9 @@ export function parseSkillsNewArgs(args: string): {
   return { name: parts[0], template: templateRaw };
 }
 
+/**
+ * Render the SKILL.md body for a built-in `/skills new` template.
+ */
 export function renderSkillTemplate(
   id: SkillTemplateId,
   name: string,
@@ -173,6 +183,9 @@ Use before marking a change merge-ready.
   }
 }
 
+/**
+ * Write `~/.pi/agent/skills/<name>/SKILL.md` from a template; throws if it exists.
+ */
 export function writeSkillFromTemplate(
   name: string,
   template: SkillTemplateId,
@@ -190,6 +203,9 @@ export function writeSkillFromTemplate(
   return { filePath };
 }
 
+/**
+ * Select-overlay items for the `/skills new` template picker.
+ */
 export function buildSkillTemplateItems(): SelectItem[] {
   return SKILL_TEMPLATE_IDS.map((id) => ({
     value: id,
@@ -198,15 +214,16 @@ export function buildSkillTemplateItems(): SelectItem[] {
   }));
 }
 
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
-}
-
+/**
+ * Delegate to the shared `!editor path` builder used by overlay edit.
+ */
 export function editorCommandFor(path: string): string {
-  const ed = process.env.EDITOR?.trim() || "nvim";
-  return `!${ed} ${shellQuote(path)}`;
+  return editorCommand(path);
 }
 
+/**
+ * Append text as a new editor line without clearing existing input.
+ */
 function appendEditorText(ctx: any, text: string): void {
   const current = ctx.ui.getEditorText?.() ?? "";
   const separator = current && !current.endsWith("\n") ? "\n" : "";

@@ -55,11 +55,16 @@ import {
 
 const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*m/g;
 
+/**
+ * Remove ANSI SGR sequences from a rendered segment string.
+ */
 function stripAnsi(text: string): string {
   return text.replace(ANSI_ESCAPE_RE, "");
 }
 
-/** Index of the first visible (non-escape) character in a rendered string. */
+/**
+ * Index of the first visible (non-escape) character in a rendered string.
+ */
 function firstVisibleCharIndex(content: string): number {
   for (let i = 0; i < content.length; i++) {
     if (content[i] === "\x1b") {
@@ -135,9 +140,6 @@ export function applySegmentDecoration(
   return { content, visible: true };
 }
 
-const SEGMENT_ERROR_LOG_INTERVAL_MS = 10_000;
-const lastSegmentErrorLog = new Map<StatusLineSegmentId, number>();
-
 export const SEGMENTS: Record<BuiltinStatusLineSegmentId, StatusLineSegment> = {
   model: modelSegment,
   shell_mode: shellModeSegment,
@@ -163,6 +165,9 @@ export const SEGMENTS: Record<BuiltinStatusLineSegmentId, StatusLineSegment> = {
   extension_statuses: extensionStatusesSegment,
 };
 
+/**
+ * Render one status segment; on failure keep the footer and show `!id`.
+ */
 export function renderSegment(
   id: StatusLineSegmentId,
   ctx: SegmentContext,
@@ -180,20 +185,12 @@ export function renderSegment(
       rendered = segment ? segment.render(ctx) : { content: "", visible: false };
     }
     return applySegmentDecoration(id, ctx, rendered);
-  } catch (err) {
+  } catch {
     // Per-segment fault isolation: keep the footer alive and identify the
-    // segment that failed. Log at most once every 10 seconds per segment.
-    const now = Date.now();
-    const lastLogged = lastSegmentErrorLog.get(id) ?? 0;
-    if (now - lastLogged >= SEGMENT_ERROR_LOG_INTERVAL_MS) {
-      lastSegmentErrorLog.set(id, now);
-      const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
-      console.warn(`[wishcraft] segment "${id}" failed: ${detail}`);
-    }
+    // segment that failed. Do not write stacks to stderr on the paint path.
     return applySegmentDecoration(id, ctx, {
       content: `!${id}`,
       visible: true,
     });
-
   }
 }

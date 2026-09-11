@@ -20,14 +20,16 @@ import { getAgentDir } from "../../paths/agent-dirs.ts";
 import type { RuntimeState } from "../core/types.ts";
 import {
   applySkillFilter,
+  extraSkillPaths,
   getSkillUsage,
   invalidateSkillCache,
-  loadSkillCatalog,
   insertSkillBody,
+  loadSkillCatalog,
   readSkillBody,
   type SkillCategory,
   type SkillEntry,
 } from "./skill-registry.ts";
+import { editorCommand } from "./skill-editor.ts";
 import { runSkillDoctor } from "./skill-doctor.ts";
 import { runSkillsNew } from "./skill-templates.ts";
 
@@ -50,16 +52,25 @@ const CATEGORY_ORDER: (SkillCategory | "all")[] = [
 const LIST_ROWS = 14;
 const DETAIL_ROWS = 18;
 
+/**
+ * True when `data` is a single printable ASCII character.
+ */
 function isPrintable(data: string): boolean {
   return data.length === 1 && data >= " " && data <= "~";
 }
 
+/**
+ * Format a byte count for the skill detail panel.
+ */
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Format a last-used timestamp for the skill list.
+ */
 function formatLastUsed(ms: number): string {
   if (!ms) return "never";
   const diff = Date.now() - ms;
@@ -72,7 +83,9 @@ function formatLastUsed(ms: number): string {
   return `${d}d ago`;
 }
 
-/** Append text as a new editor line; the user presses enter to run it. */
+/**
+ * Append text as a new editor line; the user presses enter to run it.
+ */
 function appendToEditor(ctx: any, text: string, notify: string): void {
   const current = ctx.ui.getEditorText?.() ?? "";
   const separator = current && !current.endsWith("\n") ? "\n" : "";
@@ -80,57 +93,106 @@ function appendToEditor(ctx: any, text: string, notify: string): void {
   ctx.ui.notify(notify, "info");
 }
 
-/** POSIX single-quote a path so a skill name with shell metacharacters
- * (e.g. `a; curl … | sh` from an untrusted cloned repo) cannot inject. */
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
+/**
+ * Resolve `path` through symlinks, or `null` when it cannot be read.
+ */
+function realpathOrNull(path: string): string | null {
+  try {
+    return realpathSync(path);
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Resolve `target` through symlinks and confirm it stays within one of the
- * canonical skill roots (agent skills dir, `<cwd>/.pi/skills`, `<cwd>/skills`).
- * Guards the recursive delete against catalog paths that a cloned/untrusted
- * repo could point outside the expected trees. Returns false when the path
- * cannot be resolved (e.g. already removed) so callers fail closed.
+ * True when `child` is a strict descendant of `parent` (equal paths fail).
  */
-export function isContainedInSkillRoots(target: string, cwd: string): boolean {
-  const roots = [
+function isInsideParent(parent: string, child: string): boolean {
+  const rel = relative(parent, child);
+  return rel !== "" && !rel.startsWith("..") && !rel.startsWith("/");
+}
+
+/**
+ * Realpaths of cwd and the agent dir; skill roots must stay inside these.
+ */
+function trustedParentReals(cwd: string): string[] {
+  const parents: string[] = [];
+  const cwdReal = realpathOrNull(cwd);
+  const agentReal = realpathOrNull(getAgentDir());
+  if (cwdReal) parents.push(cwdReal);
+  if (agentReal && agentReal !== cwdReal) parents.push(agentReal);
+  return parents;
+}
+
+/**
+ * Canonical skill dirs unioned with catalog extra paths for containment checks.
+ */
+function containmentRoots(cwd: string): string[] {
+  const canonical = [
     join(getAgentDir(), "skills"),
     join(cwd, ".pi", "skills"),
     join(cwd, "skills"),
   ];
-  let real: string;
-  try {
-    real = realpathSync(target);
-  } catch {
-    return false;
-  }
-  return roots.some((root) => {
-    let realRoot: string;
-    try {
-      realRoot = realpathSync(root);
-    } catch {
+  const extras = extraSkillPaths(cwd).map((entry) => entry.path);
+  return [...new Set([...canonical, ...extras])];
+}
+
+/**
+ * Resolve `target` through symlinks and confirm it stays within a trusted
+ * skill/prompt root. Roots are the canonical skill dirs unioned with catalog
+ * extra paths; a root is trusted only when its realpath stays inside
+ * `realpath(cwd)` or `realpath(getAgentDir())`. Returns false when the path
+ * cannot be resolved so callers fail closed.
+ */
+export function isContainedInSkillRoots(target: string, cwd: string): boolean {
+  const parents = trustedParentReals(cwd);
+  if (parents.length === 0) return false;
+  const real = realpathOrNull(target);
+  if (!real) return false;
+  return containmentRoots(cwd).some((root) => {
+    const realRoot = realpathOrNull(root);
+    if (!realRoot) return false;
+    if (!parents.some((parent) => isInsideParent(parent, realRoot))) {
       return false;
     }
-    const rel = relative(realRoot, real);
-    return rel !== "" && !rel.startsWith("..") && !rel.startsWith("/");
+    return isInsideParent(realRoot, real);
   });
 }
 
 /**
- * Only allow a bare, path-like editor invocation (no arguments, no shell
- * metacharacters) so a hostile `EDITOR` value cannot inject into the `!` flow.
- * Falls back to `nvim` when the value is unusable.
+ * True when delete should `rm -r` the skill directory, not just the file.
  */
-export function safeEditor(): string {
-  const ed = process.env.EDITOR?.trim();
-  return ed && /^[\w./-]+$/.test(ed) ? ed : "nvim";
+function isRecursiveDirectoryDelete(entry: SkillEntry): boolean {
+  return Boolean(
+    entry.isDirectorySkill &&
+      entry.filePath.endsWith("SKILL.md") &&
+      (entry.category === "global" ||
+        entry.category === "project" ||
+        entry.category === "prompts"),
+  );
 }
 
-function editorCommand(path: string): string {
-  return `!${safeEditor()} ${shellQuote(path)}`;
+/**
+ * Remove a catalogued skill; recursive for directory skills under skills/prompts.
+ */
+export function deleteSkillEntry(entry: SkillEntry, cwd: string): void {
+  const recursive = isRecursiveDirectoryDelete(entry);
+  const target = recursive ? entry.baseDir : entry.filePath;
+  if (!isContainedInSkillRoots(target, cwd)) {
+    throw new Error(`refusing to delete outside skill roots: ${target}`);
+  }
+  if (recursive) {
+    rmSync(entry.baseDir, { recursive: true, force: true });
+    return;
+  }
+  rmSync(entry.filePath, { force: true });
 }
 
+export { safeEditor } from "./skill-editor.ts";
+
+/**
+ * Open the skills list/detail overlay; returns `"new"` when the user creates one.
+ */
 export async function showSkillManager(ctx: any): Promise<"new" | null> {
   invalidateSkillCache();
   let entries = loadSkillCatalog(ctx.cwd ?? process.cwd());
@@ -178,21 +240,13 @@ export async function showSkillManager(ctx: any): Promise<"new" | null> {
 
       const close = () => done(null);
 
+      /**
+       * Remove the selected catalog entry then refresh the overlay list.
+       */
       const doDelete = (entry: SkillEntry) => {
         const cwd = ctx.cwd ?? process.cwd();
         try {
-          if (entry.isDirectorySkill && entry.filePath.endsWith("SKILL.md") &&
-              (entry.category === "global" || entry.category === "project")) {
-            if (!isContainedInSkillRoots(entry.baseDir, cwd)) {
-              throw new Error(`refusing to delete outside skill roots: ${entry.baseDir}`);
-            }
-            rmSync(entry.baseDir, { recursive: true, force: true });
-          } else {
-            if (!isContainedInSkillRoots(entry.filePath, cwd)) {
-              throw new Error(`refusing to delete outside skill roots: ${entry.filePath}`);
-            }
-            rmSync(entry.filePath, { force: true });
-          }
+          deleteSkillEntry(entry, cwd);
           ctx.ui.notify(`Skill deleted: ${entry.name}`, "info");
         } catch (error) {
           ctx.ui.notify(
@@ -207,6 +261,9 @@ export async function showSkillManager(ctx: any): Promise<"new" | null> {
         selected = Math.min(selected, Math.max(0, filtered().length - 1));
       };
 
+      /**
+       * Insert the skill body into the editor and notify the operator.
+       */
       const insertBody = (entry: SkillEntry) => {
         insertSkillBody(ctx, entry.name, readSkillBody(entry.filePath));
         ctx.ui.notify("Skill inserted into your prompt", "info");
@@ -509,11 +566,14 @@ export async function showSkillManager(ctx: any): Promise<"new" | null> {
   );
 }
 
-/** Register the `/skills` command. */
+/** Optional `/skills` handlers the extension wires in at activation. */
 export type SkillManagerCommandDeps = {
   runDoctor?: (ctx: any) => Promise<void>;
 };
 
+/**
+ * Register the `/skills` command.
+ */
 export function registerSkillManagerCommand(
   pi: ExtensionAPI,
   rt: RuntimeState,

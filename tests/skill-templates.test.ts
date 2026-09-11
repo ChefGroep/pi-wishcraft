@@ -96,6 +96,9 @@ test("writeSkillFromTemplate writes SKILL.md and refuses overwrite and traversal
   }
 });
 
+/**
+ * Fake pi editor context that records `setEditorText` and notifies.
+ */
 function mockEditorCtx(initialText = "") {
   let editorText = initialText;
   const notifications: Array<{ message: string; level: string }> = [];
@@ -117,6 +120,23 @@ function mockEditorCtx(initialText = "") {
     notifications,
   };
 }
+
+test("editorCommandFor uses nvim when EDITOR is unsafe", () => {
+  const previous = process.env.EDITOR;
+  try {
+    process.env.EDITOR = "vim; id";
+    assert.equal(editorCommandFor("/tmp/skill.md"), "!nvim '/tmp/skill.md'");
+    process.env.EDITOR = "vim";
+    assert.equal(editorCommandFor("/tmp/skill.md"), "!vim '/tmp/skill.md'");
+    process.env.EDITOR = "";
+    assert.equal(editorCommandFor("/tmp/skill.md"), "!nvim '/tmp/skill.md'");
+    delete process.env.EDITOR;
+    assert.equal(editorCommandFor("/tmp/skill.md"), "!nvim '/tmp/skill.md'");
+  } finally {
+    if (previous === undefined) delete process.env.EDITOR;
+    else process.env.EDITOR = previous;
+  }
+});
 
 test("runSkillsNew with a name appends the editor command without clearing existing text", async () => {
   const agentDir = mkdtempSync(join(tmpdir(), "skill-new-agent-"));
