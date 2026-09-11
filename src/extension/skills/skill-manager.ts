@@ -20,15 +20,16 @@ import { getAgentDir } from "../../paths/agent-dirs.ts";
 import type { RuntimeState } from "../core/types.ts";
 import {
   applySkillFilter,
+  extraSkillPaths,
   getSkillUsage,
   invalidateSkillCache,
-  loadSkillCatalog,
   insertSkillBody,
+  loadSkillCatalog,
   readSkillBody,
-  extraSkillPaths,
   type SkillCategory,
   type SkillEntry,
 } from "./skill-registry.ts";
+import { editorCommand } from "./skill-editor.ts";
 import { runSkillDoctor } from "./skill-doctor.ts";
 import { runSkillsNew } from "./skill-templates.ts";
 
@@ -79,12 +80,6 @@ function appendToEditor(ctx: any, text: string, notify: string): void {
   const separator = current && !current.endsWith("\n") ? "\n" : "";
   ctx.ui.setEditorText(`${current}${separator}${text}\n`);
   ctx.ui.notify(notify, "info");
-}
-
-/** POSIX single-quote a path so a skill name with shell metacharacters
- * (e.g. `a; curl … | sh` from an untrusted cloned repo) cannot inject. */
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
 function realpathOrNull(path: string): string | null {
@@ -171,19 +166,7 @@ export function deleteSkillEntry(entry: SkillEntry, cwd: string): void {
   rmSync(entry.filePath, { force: true });
 }
 
-/**
- * Only allow a bare, path-like editor invocation (no arguments, no shell
- * metacharacters) so a hostile `EDITOR` value cannot inject into the `!` flow.
- * Falls back to `nvim` when the value is unusable.
- */
-export function safeEditor(): string {
-  const ed = process.env.EDITOR?.trim();
-  return ed && /^[\w./-]+$/.test(ed) ? ed : "nvim";
-}
-
-function editorCommand(path: string): string {
-  return `!${safeEditor()} ${shellQuote(path)}`;
-}
+export { safeEditor } from "./skill-editor.ts";
 
 export async function showSkillManager(ctx: any): Promise<"new" | null> {
   invalidateSkillCache();

@@ -10,6 +10,7 @@ import type { SelectItem } from "@earendil-works/pi-tui";
 import { getAgentPath } from "../../paths/agent-dirs.ts";
 import { showSelectOverlay } from "../ui/overlay-chrome.ts";
 import { invalidateSkillCache } from "./skill-registry.ts";
+import { editorCommand } from "./skill-editor.ts";
 
 export const SKILL_TEMPLATE_IDS = [
   "standard",
@@ -198,13 +199,8 @@ export function buildSkillTemplateItems(): SelectItem[] {
   }));
 }
 
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
-}
-
 export function editorCommandFor(path: string): string {
-  const ed = process.env.EDITOR?.trim() || "nvim";
-  return `!${ed} ${shellQuote(path)}`;
+  return editorCommand(path);
 }
 
 function appendEditorText(ctx: any, text: string): void {
