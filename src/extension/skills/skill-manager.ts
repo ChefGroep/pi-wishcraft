@@ -25,6 +25,7 @@ import {
   loadSkillCatalog,
   insertSkillBody,
   readSkillBody,
+  extraSkillPaths,
   type SkillCategory,
   type SkillEntry,
 } from "./skill-registry.ts";
@@ -86,35 +87,88 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
-/**
- * Resolve `target` through symlinks and confirm it stays within one of the
- * canonical skill roots (agent skills dir, `<cwd>/.pi/skills`, `<cwd>/skills`).
- * Guards the recursive delete against catalog paths that a cloned/untrusted
- * repo could point outside the expected trees. Returns false when the path
- * cannot be resolved (e.g. already removed) so callers fail closed.
- */
-export function isContainedInSkillRoots(target: string, cwd: string): boolean {
-  const roots = [
+function realpathOrNull(path: string): string | null {
+  try {
+    return realpathSync(path);
+  } catch {
+    return null;
+  }
+}
+
+function isInsideParent(parent: string, child: string): boolean {
+  const rel = relative(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !rel.startsWith("/"));
+}
+
+function trustedParentReals(cwd: string): string[] {
+  const parents: string[] = [];
+  const cwdReal = realpathOrNull(cwd);
+  const agentReal = realpathOrNull(getAgentDir());
+  if (cwdReal) parents.push(cwdReal);
+  if (agentReal && agentReal !== cwdReal) parents.push(agentReal);
+  return parents;
+}
+
+function containmentRoots(cwd: string): string[] {
+  const canonical = [
     join(getAgentDir(), "skills"),
     join(cwd, ".pi", "skills"),
     join(cwd, "skills"),
   ];
+  const extras = extraSkillPaths(cwd).map((entry) => entry.path);
+  return [...new Set([...canonical, ...extras])];
+}
+
+/**
+ * Resolve `target` through symlinks and confirm it stays within a trusted
+ * skill/prompt root. Roots are the canonical skill dirs unioned with catalog
+ * extra paths; a root is trusted only when its realpath stays inside
+ * `realpath(cwd)` or `realpath(getAgentDir())`. Returns false when the path
+ * cannot be resolved so callers fail closed.
+ */
+export function isContainedInSkillRoots(target: string, cwd: string): boolean {
+  const parents = trustedParentReals(cwd);
+  if (parents.length === 0) return false;
   let real: string;
   try {
     real = realpathSync(target);
   } catch {
     return false;
   }
-  return roots.some((root) => {
-    let realRoot: string;
-    try {
-      realRoot = realpathSync(root);
-    } catch {
+  return containmentRoots(cwd).some((root) => {
+    const realRoot = realpathOrNull(root);
+    if (!realRoot) return false;
+    if (!parents.some((parent) => isInsideParent(parent, realRoot))) {
       return false;
     }
     const rel = relative(realRoot, real);
     return rel !== "" && !rel.startsWith("..") && !rel.startsWith("/");
   });
+}
+
+function isRecursiveDirectoryDelete(entry: SkillEntry): boolean {
+  return Boolean(
+    entry.isDirectorySkill &&
+      entry.filePath.endsWith("SKILL.md") &&
+      (entry.category === "global" ||
+        entry.category === "project" ||
+        entry.category === "prompts"),
+  );
+}
+
+/** Remove a catalogued skill; recursive for directory skills under skills/prompts. */
+export function deleteSkillEntry(entry: SkillEntry, cwd: string): void {
+  if (isRecursiveDirectoryDelete(entry)) {
+    if (!isContainedInSkillRoots(entry.baseDir, cwd)) {
+      throw new Error(`refusing to delete outside skill roots: ${entry.baseDir}`);
+    }
+    rmSync(entry.baseDir, { recursive: true, force: true });
+    return;
+  }
+  if (!isContainedInSkillRoots(entry.filePath, cwd)) {
+    throw new Error(`refusing to delete outside skill roots: ${entry.filePath}`);
+  }
+  rmSync(entry.filePath, { force: true });
 }
 
 /**
@@ -181,18 +235,7 @@ export async function showSkillManager(ctx: any): Promise<"new" | null> {
       const doDelete = (entry: SkillEntry) => {
         const cwd = ctx.cwd ?? process.cwd();
         try {
-          if (entry.isDirectorySkill && entry.filePath.endsWith("SKILL.md") &&
-              (entry.category === "global" || entry.category === "project")) {
-            if (!isContainedInSkillRoots(entry.baseDir, cwd)) {
-              throw new Error(`refusing to delete outside skill roots: ${entry.baseDir}`);
-            }
-            rmSync(entry.baseDir, { recursive: true, force: true });
-          } else {
-            if (!isContainedInSkillRoots(entry.filePath, cwd)) {
-              throw new Error(`refusing to delete outside skill roots: ${entry.filePath}`);
-            }
-            rmSync(entry.filePath, { force: true });
-          }
+          deleteSkillEntry(entry, cwd);
           ctx.ui.notify(`Skill deleted: ${entry.name}`, "info");
         } catch (error) {
           ctx.ui.notify(

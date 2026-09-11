@@ -115,7 +115,7 @@ export function invalidateSkillCache(): void {
 }
 
 /** Legacy prompts/loose-md dirs that inline-invocation already scanned. */
-function extraSkillPaths(cwd: string): { path: string; category: SkillCategory }[] {
+export function extraSkillPaths(cwd: string): { path: string; category: SkillCategory }[] {
   const agent = getAgentDir();
   return [
     { path: join(agent, "prompts"), category: "prompts" },
