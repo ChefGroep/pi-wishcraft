@@ -92,7 +92,7 @@ function realpathOrNull(path: string): string | null {
 
 function isInsideParent(parent: string, child: string): boolean {
   const rel = relative(parent, child);
-  return rel === "" || (!rel.startsWith("..") && !rel.startsWith("/"));
+  return rel !== "" && !rel.startsWith("..") && !rel.startsWith("/");
 }
 
 function trustedParentReals(cwd: string): string[] {
@@ -132,8 +132,7 @@ export function isContainedInSkillRoots(target: string, cwd: string): boolean {
     if (!parents.some((parent) => isInsideParent(parent, realRoot))) {
       return false;
     }
-    const rel = relative(realRoot, real);
-    return rel !== "" && !rel.startsWith("..") && !rel.startsWith("/");
+    return isInsideParent(realRoot, real);
   });
 }
 

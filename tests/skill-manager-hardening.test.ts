@@ -129,6 +129,38 @@ test("isContainedInSkillRoots rejects a skills root that realpaths outside cwd a
   }
 });
 
+test("isContainedInSkillRoots rejects a skills root that realpaths to cwd", () => {
+  const root = mkdtempSync(join(tmpdir(), "wishcraft-skills-"));
+  try {
+    const agentDir = join(root, "agent");
+    const cwd = join(root, "project");
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(join(cwd, "src"), { recursive: true });
+    const nestedSkill = join(cwd, "src", "nested");
+    mkdirSync(nestedSkill, { recursive: true });
+    const nestedFile = join(nestedSkill, "SKILL.md");
+    writeFileSync(nestedFile, "# nested\n", "utf8");
+    try {
+      symlinkSync(cwd, join(cwd, "skills"), "dir");
+    } catch {
+      return;
+    }
+
+    withAgentDir(agentDir, () => {
+      assert.equal(isContainedInSkillRoots(nestedSkill, cwd), false);
+      assert.equal(isContainedInSkillRoots(nestedFile, cwd), false);
+      assert.throws(
+        () => deleteSkillEntry(promptDirEntry(nestedFile, nestedSkill, "nested"), cwd),
+        /refusing to delete outside skill roots/,
+      );
+      assert.equal(existsSync(nestedFile), true);
+      assert.equal(existsSync(join(cwd, "src")), true);
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 function promptDirEntry(filePath: string, baseDir: string, name: string): SkillEntry {
   return {
     name,
