@@ -135,9 +135,6 @@ export function applySegmentDecoration(
   return { content, visible: true };
 }
 
-const SEGMENT_ERROR_LOG_INTERVAL_MS = 10_000;
-const lastSegmentErrorLog = new Map<StatusLineSegmentId, number>();
-
 export const SEGMENTS: Record<BuiltinStatusLineSegmentId, StatusLineSegment> = {
   model: modelSegment,
   shell_mode: shellModeSegment,
@@ -180,20 +177,12 @@ export function renderSegment(
       rendered = segment ? segment.render(ctx) : { content: "", visible: false };
     }
     return applySegmentDecoration(id, ctx, rendered);
-  } catch (err) {
+  } catch {
     // Per-segment fault isolation: keep the footer alive and identify the
-    // segment that failed. Log at most once every 10 seconds per segment.
-    const now = Date.now();
-    const lastLogged = lastSegmentErrorLog.get(id) ?? 0;
-    if (now - lastLogged >= SEGMENT_ERROR_LOG_INTERVAL_MS) {
-      lastSegmentErrorLog.set(id, now);
-      const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
-      console.warn(`[wishcraft] segment "${id}" failed: ${detail}`);
-    }
+    // segment that failed. Do not write stacks to stderr on the paint path.
     return applySegmentDecoration(id, ctx, {
       content: `!${id}`,
       visible: true,
     });
-
   }
 }

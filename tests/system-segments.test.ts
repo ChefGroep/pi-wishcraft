@@ -241,11 +241,18 @@ test("renderSegment isolates a failing command segment instead of blanking the f
   registerCustomSegments({
     boom: { type: "command", command: 'node -e "process.exit(1)"' },
   });
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
   try {
     const out = renderSegment("custom:boom", createSegmentContext());
     assert.equal(out.visible, true);
     assert.equal(out.content, "!custom:boom");
+    assert.deepEqual(warnings, []);
   } finally {
+    console.warn = originalWarn;
     customComputedSegments.clear();
   }
 });
