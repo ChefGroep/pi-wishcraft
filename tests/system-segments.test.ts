@@ -17,6 +17,7 @@ import type {
   ThemeLike,
 } from "../src/config/types.ts";
 
+/** Minimal `SegmentContext` for status-line render tests. */
 function createSegmentContext(
   overrides: Partial<SegmentContext> = {},
 ): SegmentContext {

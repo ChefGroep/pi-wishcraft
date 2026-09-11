@@ -52,16 +52,19 @@ const CATEGORY_ORDER: (SkillCategory | "all")[] = [
 const LIST_ROWS = 14;
 const DETAIL_ROWS = 18;
 
+/** True when `data` is a single printable ASCII character. */
 function isPrintable(data: string): boolean {
   return data.length === 1 && data >= " " && data <= "~";
 }
 
+/** Format a byte count for the skill detail panel. */
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Format a last-used timestamp for the skill list. */
 function formatLastUsed(ms: number): string {
   if (!ms) return "never";
   const diff = Date.now() - ms;
@@ -82,6 +85,7 @@ function appendToEditor(ctx: any, text: string, notify: string): void {
   ctx.ui.notify(notify, "info");
 }
 
+/** Resolve `path` through symlinks, or `null` when it cannot be read. */
 function realpathOrNull(path: string): string | null {
   try {
     return realpathSync(path);
@@ -90,11 +94,13 @@ function realpathOrNull(path: string): string | null {
   }
 }
 
+/** True when `child` is a strict descendant of `parent` (equal paths fail). */
 function isInsideParent(parent: string, child: string): boolean {
   const rel = relative(parent, child);
   return rel !== "" && !rel.startsWith("..") && !rel.startsWith("/");
 }
 
+/** Realpaths of cwd and the agent dir; skill roots must stay inside these. */
 function trustedParentReals(cwd: string): string[] {
   const parents: string[] = [];
   const cwdReal = realpathOrNull(cwd);
@@ -104,6 +110,7 @@ function trustedParentReals(cwd: string): string[] {
   return parents;
 }
 
+/** Canonical skill dirs unioned with catalog extra paths for containment checks. */
 function containmentRoots(cwd: string): string[] {
   const canonical = [
     join(getAgentDir(), "skills"),
@@ -136,6 +143,7 @@ export function isContainedInSkillRoots(target: string, cwd: string): boolean {
   });
 }
 
+/** True when delete should `rm -r` the skill directory, not just the file. */
 function isRecursiveDirectoryDelete(entry: SkillEntry): boolean {
   return Boolean(
     entry.isDirectorySkill &&
@@ -162,6 +170,7 @@ export function deleteSkillEntry(entry: SkillEntry, cwd: string): void {
 
 export { safeEditor } from "./skill-editor.ts";
 
+/** Open the skills list/detail overlay; returns `"new"` when the user creates one. */
 export async function showSkillManager(ctx: any): Promise<"new" | null> {
   invalidateSkillCache();
   let entries = loadSkillCatalog(ctx.cwd ?? process.cwd());
@@ -209,6 +218,7 @@ export async function showSkillManager(ctx: any): Promise<"new" | null> {
 
       const close = () => done(null);
 
+      /** Remove the selected catalog entry then refresh the overlay list. */
       const doDelete = (entry: SkillEntry) => {
         const cwd = ctx.cwd ?? process.cwd();
         try {
@@ -227,6 +237,7 @@ export async function showSkillManager(ctx: any): Promise<"new" | null> {
         selected = Math.min(selected, Math.max(0, filtered().length - 1));
       };
 
+      /** Insert the skill body into the editor and notify the operator. */
       const insertBody = (entry: SkillEntry) => {
         insertSkillBody(ctx, entry.name, readSkillBody(entry.filePath));
         ctx.ui.notify("Skill inserted into your prompt", "info");
@@ -529,11 +540,12 @@ export async function showSkillManager(ctx: any): Promise<"new" | null> {
   );
 }
 
-/** Register the `/skills` command. */
+/** Optional `/skills` handlers the extension wires in at activation. */
 export type SkillManagerCommandDeps = {
   runDoctor?: (ctx: any) => Promise<void>;
 };
 
+/** Register the `/skills` command. */
 export function registerSkillManagerCommand(
   pi: ExtensionAPI,
   rt: RuntimeState,

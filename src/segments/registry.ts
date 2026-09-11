@@ -160,6 +160,7 @@ export const SEGMENTS: Record<BuiltinStatusLineSegmentId, StatusLineSegment> = {
   extension_statuses: extensionStatusesSegment,
 };
 
+/** Render one status segment; on failure keep the footer and show `!id`. */
 export function renderSegment(
   id: StatusLineSegmentId,
   ctx: SegmentContext,

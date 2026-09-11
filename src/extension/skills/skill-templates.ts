@@ -174,6 +174,7 @@ Use before marking a change merge-ready.
   }
 }
 
+/** Write `~/.pi/agent/skills/<name>/SKILL.md` from a template; throws if it exists. */
 export function writeSkillFromTemplate(
   name: string,
   template: SkillTemplateId,
@@ -191,6 +192,7 @@ export function writeSkillFromTemplate(
   return { filePath };
 }
 
+/** Select-overlay items for the `/skills new` template picker. */
 export function buildSkillTemplateItems(): SelectItem[] {
   return SKILL_TEMPLATE_IDS.map((id) => ({
     value: id,
@@ -199,10 +201,12 @@ export function buildSkillTemplateItems(): SelectItem[] {
   }));
 }
 
+/** Delegate to the shared `!editor path` builder used by overlay edit. */
 export function editorCommandFor(path: string): string {
   return editorCommand(path);
 }
 
+/** Append text as a new editor line without clearing existing input. */
 function appendEditorText(ctx: any, text: string): void {
   const current = ctx.ui.getEditorText?.() ?? "";
   const separator = current && !current.endsWith("\n") ? "\n" : "";
