@@ -222,6 +222,20 @@ Declarative policy rules (`wishcraft.policy`) live in the same global file. They
 
 Tool-input repairs apply to custom/extension tools only (`wishcraft.repairsEnabled`, default on). `/repairs` prints the counters.
 
+## Welcome lantern
+
+The startup overlay paints the Kongming lantern in the left column. Flame cells flicker at ~10 fps; paper and tassel stay almost still. The persistent header (`quietStartup: true`) always uses a still frame.
+
+Motion is on by default. Turn it off with `wishcraft.welcome.animateLantern: false`, or set `WISHCRAFT_REDUCED_MOTION` to a truthy value (`1`, `true`, `on`, `yes`). `NO_COLOR` keeps the silhouette and skips the flicker timer. Host `prefers-reduced-motion` is not detected.
+
+```json
+{
+  "wishcraft": {
+    "welcome": { "animateLantern": true }
+  }
+}
+```
+
 ## Token budget
 
 `wishcraft.tokenBudget.daily` is a token count (input + output + cache). At 80% the cost segment turns warning-coloured; at 100% it turns red and welcome notifies. It never blocks a turn.

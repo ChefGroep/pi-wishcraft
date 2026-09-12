@@ -5,8 +5,14 @@ import {
   discoverWhatsNew,
   getRecentSessions,
 } from "../../welcome/index.ts";
+import {
+  lanternAnimationEnabled,
+  welcomeOverlayTickMs,
+  WELCOME_COUNTDOWN_MS,
+} from "../../welcome/motion-policy.ts";
 import { estimateInitialContextTokens } from "../../usage/context.ts";
-import { isRecord } from "../settings/settings-io.ts";
+import { colorEnabled } from "../../theme/colors.ts";
+import { isRecord, readSettings } from "../settings/settings-io.ts";
 import type { RuntimeState } from "../core/types.ts";
 import { getQueueContext } from "../queue/queue-context.ts";
 import { pickNextReviewIdea } from "../queue/idea-review.ts";
@@ -95,6 +101,10 @@ export function setupWelcomeOverlay(rt: RuntimeState, ctx: any) {
       rt.queueStore.activeItems(getQueueContext(ctx)),
     )?.text;
     const whatsNew = discoverWhatsNew();
+    const animateLantern =
+      lanternAnimationEnabled(
+        readSettings(ctx.cwd ?? process.cwd()).wishcraft,
+      ) && colorEnabled();
 
     ctx.ui
       .custom(
@@ -114,11 +124,14 @@ export function setupWelcomeOverlay(rt: RuntimeState, ctx: any) {
             hasStash,
             whatsNew,
             nextIdeaText,
+            animateLantern,
           );
 
           let countdown = 30;
           let dismissed = false;
+          let motionElapsed = 0;
           let interval: ReturnType<typeof setInterval> | null = null;
+          const tickMs = welcomeOverlayTickMs(animateLantern);
 
           const dismiss = () => {
             if (dismissed) return;
@@ -130,11 +143,20 @@ export function setupWelcomeOverlay(rt: RuntimeState, ctx: any) {
 
           interval = setInterval(() => {
             if (dismissed) return;
-            countdown--;
-            welcome.setCountdown(countdown);
+            if (animateLantern) {
+              motionElapsed += tickMs;
+              if (motionElapsed >= WELCOME_COUNTDOWN_MS) {
+                motionElapsed -= WELCOME_COUNTDOWN_MS;
+                countdown--;
+                welcome.setCountdown(countdown);
+              }
+            } else {
+              countdown--;
+              welcome.setCountdown(countdown);
+            }
             tui.requestRender();
             if (countdown <= 0) dismiss();
-          }, 1000);
+          }, tickMs);
 
           rt.dismissWelcomeOverlay = dismiss;
 

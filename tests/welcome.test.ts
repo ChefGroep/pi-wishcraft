@@ -112,6 +112,7 @@ test("welcome renders the initial system prompt token estimate", () => {
   );
 
   assert.match(rendered, /≈ 1\.9k initial prompt tokens/);
+  assert.match(rendered, /▀/);
   for (const output of withoutEstimate) {
     assert.doesNotMatch(output, /initial prompt tokens/);
   }
@@ -139,6 +140,11 @@ test("welcome renders the initial system prompt token estimate", () => {
   assert.ok(activityGuardStart > delayStart);
   assert.ok(estimateStart > activityGuardStart);
   assert.ok(componentStart > estimateStart);
+  assert.match(indexSource, /lanternAnimationEnabled\(/);
+  assert.match(
+    indexSource,
+    /new WelcomeComponent\(\s*modelName,\s*providerName,\s*recentSessions,\s*loadedCounts,\s*initialContextTokens,\s*queueCount,\s*hasStash,\s*whatsNew,\s*nextIdeaText,\s*animateLantern,\s*\)/,
+  );
 });
 
 test("getRecentSessions prefers cwd basename from session header", () => {

@@ -10,11 +10,12 @@ import type { LoadedCounts, RecentSession } from "./types.ts";
 
 /**
  * Welcome overlay component for pi agent.
- * Displays a branded splash screen with logo, tips, and loaded counts.
+ * Displays a branded splash screen with the Kongming lantern, tips, and loaded counts.
  */
 export class WelcomeComponent implements Component {
   private data: WelcomeData;
   private countdown: number = 30;
+  private animateLantern: boolean;
 
   constructor(
     modelName: string,
@@ -31,7 +32,9 @@ export class WelcomeComponent implements Component {
     hasStash?: boolean,
     whatsNew?: string[],
     nextIdeaText?: string,
+    animateLantern = false,
   ) {
+    this.animateLantern = animateLantern;
     this.data = {
       modelName,
       providerName,
@@ -79,6 +82,9 @@ export class WelcomeComponent implements Component {
       countdownStyled +
       dim(hChar.repeat(Math.max(0, rightPad)));
 
-    return renderWelcomeBox(this.data, termWidth, bottomLine);
+    return renderWelcomeBox(this.data, termWidth, bottomLine, {
+      now: Date.now(),
+      still: !this.animateLantern,
+    });
   }
 }

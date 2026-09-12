@@ -29,6 +29,14 @@ test("read hints toggle defaults on and the first toggle disables it", () => {
   assert.equal(nextToggleValue(item, false), true);
 });
 
+test("lantern animation toggle defaults on", () => {
+  const item = findItem("Animate wishcraft lantern");
+  assert.equal(item.path, "wishcraft.welcome.animateLantern");
+  assert.equal(item.default, true);
+  assert.equal(displayValue(item, null), "on");
+  assert.equal(nextToggleValue(item, null), false);
+});
+
 test("a normal toggle defaults off and the first toggle enables it", () => {
   const item = findItem("Hooks enabled");
   assert.notEqual(item.default, true);

@@ -41,3 +41,9 @@ export interface WelcomeLayoutConfig {
   columnGap: number;
   breakpoint: number;
 }
+
+/** Paint-time lantern motion. Header and tests default to a still frame. */
+export interface WelcomePaint {
+  now?: number;
+  still?: boolean;
+}

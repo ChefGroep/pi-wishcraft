@@ -161,7 +161,7 @@ export function buildConfigGroups(settings: Record<string, unknown>): ConfigGrou
       title: "Welcome & vibes",
       items: [
         { label: "Welcome overlay", path: "powerline.welcome", kind: "toggle", hint: "on = overlay at startup, off = no welcome" },
-        { label: "Animate wishcraft lantern", path: "wishcraft.welcome.animateLantern", kind: "toggle", hint: "flicker on the lantern" },
+        { label: "Animate wishcraft lantern", path: "wishcraft.welcome.animateLantern", kind: "toggle", default: true, hint: "flame flicker; WISHCRAFT_REDUCED_MOTION disables" },
       ],
     },
     {

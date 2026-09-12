@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Improved
+- Welcome overlay shows the Kongming lantern again, with a spatial flame flicker (~10 fps). `wishcraft.welcome.animateLantern` (default on) and `WISHCRAFT_REDUCED_MOTION` control motion. The header, `NO_COLOR`, and reduced-motion stays stay still.
+
 ## [1.1.1] - 2026-09-12
 
 ## [1.1.0] - 2026-08-23
