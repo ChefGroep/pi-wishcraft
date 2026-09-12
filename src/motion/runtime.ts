@@ -128,6 +128,8 @@ export interface MotionRuntimeOptions {
   getStreaming: () => boolean;
   getThinkingLevel: () => string | null;
   now?: () => number;
+  color?: () => boolean;
+  env?: () => NodeJS.ProcessEnv;
 }
 
 export function createMotionRuntime(
@@ -139,6 +141,8 @@ export function createMotionRuntime(
   let burstUntil = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   const clock = opts.now ?? Date.now;
+  const colorOn = opts.color ?? colorEnabled;
+  const envOf = opts.env ?? ((): NodeJS.ProcessEnv => process.env);
 
   function stop(): void {
     if (timer === null) return;
@@ -147,7 +151,7 @@ export function createMotionRuntime(
   }
 
   function shouldTick(now: number): boolean {
-    if (!settings.enabled || reducedMotionEnabled() || !colorEnabled()) {
+    if (!settings.enabled || reducedMotionEnabled(envOf()) || !colorOn()) {
       return false;
     }
     if (opts.getStreaming()) return true;
@@ -216,6 +220,8 @@ export function createMotionRuntime(
         keyword,
         burstUntil,
         now,
+        env: envOf(),
+        color: colorOn(),
       });
     },
     arm() {

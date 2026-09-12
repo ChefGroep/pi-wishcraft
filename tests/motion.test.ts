@@ -192,6 +192,7 @@ test("motion runtime bursts then holds a keyword and idles without one", () => {
     getStreaming: () => streaming,
     getThinkingLevel: () => thinkingLevel,
     now: () => now,
+    color: () => true,
   });
 
   try {
@@ -248,7 +249,7 @@ test("decorate helpers keep width and skip when paint is none", () => {
   );
   assert.notEqual(styled, prompt);
   assert.equal(visibleWidth(styled), visibleWidth(prompt));
-  assert.match(styled, /ultrathink/);
+  assert.match(stripMotionAnsi(styled), /ultrathink/);
   assert.equal(
     decorateKeywordLine(prompt, { enabled: true, keywords: false }, 80, {}, true),
     prompt,
