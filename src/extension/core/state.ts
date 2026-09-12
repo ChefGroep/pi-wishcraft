@@ -12,6 +12,8 @@ import {
 import { CoreContextUsageCache } from "../../usage/context.ts";
 import { createWelcomeDismissScheduler } from "../../welcome/auto-dismiss.ts";
 import { createRenderScheduler } from "../../render/timer.ts";
+import { createMotionRuntime } from "../../motion/runtime.ts";
+import { parseMotionSettings } from "../../motion/policy.ts";
 import {
   resolveShortcutConfig,
   parseBashModeSettings,
@@ -158,6 +160,16 @@ export function createRuntimeState(
 
     rt.tuiRef?.requestRender();
   }, STATUS_RENDER_DEBOUNCE_MS);
+
+  rt.motion = createMotionRuntime({
+    paint: () => {
+      rt.tuiRef?.requestRender();
+    },
+    getStreaming: () => rt.isStreaming,
+    getThinkingLevel: () =>
+      rt.currentThinkingLevel ?? rt.getThinkingLevelFn?.() ?? null,
+  });
+  rt.motion.setSettings(parseMotionSettings(startupSettings.wishcraft));
 
   return rt;
 }

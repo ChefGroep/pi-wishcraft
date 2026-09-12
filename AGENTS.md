@@ -34,6 +34,7 @@ user customization.
   - `src/theme/` — colors, icons, separators, theme loading.
   - `src/usage/` — token stats, context usage, currency rates.
   - `src/welcome/` — welcome header/overlay rendering and discovery.
+  - `src/motion/` — powerline/footer motion catalog, keyword triggers, paint overlay.
   - `src/working-vibes/` — vibe theme storage, generation, manager.
   - `src/git/`, `src/shell/`, `src/editor/`, `src/render/`, `src/paths/`,
     `src/shortcuts/`, `src/lifecycle/` — small single-purpose domains.

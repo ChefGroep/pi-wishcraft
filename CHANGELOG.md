@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Powerline/footer motion catalog (30 named styles) and ≥30 keyword triggers (`ultrathink`, `ultra`, `think harder`, `max`, …). Streaming shimmers the status bar; a matched keyword plays a short burst then holds the accent. `wishcraft.motion.enabled` / `wishcraft.motion.keywords` (default on) and `WISHCRAFT_REDUCED_MOTION` / `NO_COLOR` disable it.
+
 ### Improved
 - Welcome overlay shows the Kongming lantern again, with a spatial flame flicker (~10 fps). `wishcraft.welcome.animateLantern` (default on) and `WISHCRAFT_REDUCED_MOTION` control motion. The header, `NO_COLOR`, and reduced-motion stays stay still.
 

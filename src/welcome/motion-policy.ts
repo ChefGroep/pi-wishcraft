@@ -7,28 +7,15 @@
  * as the portable override.
  */
 
+import { reducedMotionEnabled } from "../motion/policy.ts";
+
+export { reducedMotionEnabled };
+
 export const WELCOME_LANTERN_TICK_MS = 100;
 export const WELCOME_COUNTDOWN_MS = 1000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/**
- * True when the process environment asks for reduced motion.
- */
-export function reducedMotionEnabled(
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
-  const raw = env.WISHCRAFT_REDUCED_MOTION;
-  if (raw == null || raw === "") return false;
-  const normalized = raw.trim().toLowerCase();
-  return (
-    normalized !== "0" &&
-    normalized !== "false" &&
-    normalized !== "off" &&
-    normalized !== "no"
-  );
 }
 
 /**

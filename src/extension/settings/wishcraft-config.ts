@@ -15,6 +15,7 @@ import { readSettings, writeSettingKey } from "../settings/settings-io.ts";
 import { isRecord } from "../settings/settings-io.ts";
 import { config as stateConfig, setConfig, PRESET_NAMES } from "../core/state.ts";
 import { parsePowerlineConfig } from "../../config/powerline-config.ts";
+import { parseMotionSettings } from "../../motion/policy.ts";
 
 // ---------------------------------------------------------------------------
 // Config-item declaraties
@@ -158,10 +159,12 @@ export function buildConfigGroups(settings: Record<string, unknown>): ConfigGrou
       ],
     },
     {
-      title: "Welcome & vibes",
+      title: "Welcome & motion",
       items: [
         { label: "Welcome overlay", path: "powerline.welcome", kind: "toggle", hint: "on = overlay at startup, off = no welcome" },
         { label: "Animate wishcraft lantern", path: "wishcraft.welcome.animateLantern", kind: "toggle", default: true, hint: "flame flicker; WISHCRAFT_REDUCED_MOTION disables" },
+        { label: "Powerline motion", path: "wishcraft.motion.enabled", kind: "toggle", default: true, hint: "status/footer shimmer; WISHCRAFT_REDUCED_MOTION disables" },
+        { label: "Keyword animations", path: "wishcraft.motion.keywords", kind: "toggle", default: true, hint: "ultrathink / ultra / think harder and catalog words" },
       ],
     },
     {
@@ -228,6 +231,25 @@ function coerce(item: ConfigItem, current: ConfigValue, next: string): ConfigVal
   return next;
 }
 
+function liveReloadFromSettings(
+  rt: RuntimeState,
+  item: ConfigItem,
+  settings: Record<string, unknown>,
+): void {
+  if (item.path.startsWith("powerline")) {
+    setConfig({
+      ...stateConfig,
+      ...parsePowerlineConfig(settings.powerline, PRESET_NAMES),
+    });
+    rt.tuiRef?.requestRender?.();
+  }
+  if (item.path.startsWith("wishcraft.motion")) {
+    rt.motion.setSettings(parseMotionSettings(settings.wishcraft));
+    rt.motion.arm();
+    rt.tuiRef?.requestRender?.();
+  }
+}
+
 export async function showWishcraftConfig(rt: RuntimeState, ctx: any): Promise<void> {
   const cwd = ctx.cwd ?? process.cwd();
   let settings = readSettings(cwd);
@@ -272,14 +294,7 @@ export async function showWishcraftConfig(rt: RuntimeState, ctx: any): Promise<v
         const ok = writeConfigPath(cwd, item.path, value);
         settings = readSettings(cwd);
         groups = buildConfigGroups(settings);
-        // live-reload powerline config + status bar
-        if (item.path.startsWith("powerline")) {
-          setConfig({
-            ...stateConfig,
-            ...parsePowerlineConfig(settings.powerline, PRESET_NAMES),
-          });
-          rt.tuiRef?.requestRender?.();
-        }
+        liveReloadFromSettings(rt, item, settings);
         ctx.ui.notify(
           ok ? `${item.label}: ${displayValue(item, value)} (saved)` : `${item.label} not saved (settings.json?)`,
           ok ? "info" : "warning",
@@ -294,6 +309,7 @@ export async function showWishcraftConfig(rt: RuntimeState, ctx: any): Promise<v
         const ok = writeConfigPath(cwd, item.path, next);
         settings = readSettings(cwd);
         groups = buildConfigGroups(settings);
+        liveReloadFromSettings(rt, item, settings);
         ctx.ui.notify(
           ok ? `${item.label}: ${next} (saved)` : `${item.label} not saved`,
           ok ? "info" : "warning",
@@ -305,6 +321,7 @@ export async function showWishcraftConfig(rt: RuntimeState, ctx: any): Promise<v
         const ok = writeConfigPath(cwd, item.path, nextToggleValue(item, cur));
         settings = readSettings(cwd);
         groups = buildConfigGroups(settings);
+        liveReloadFromSettings(rt, item, settings);
         ctx.ui.notify(
           ok ? `${item.label}: ${!(cur === true) ? "on" : "off"} (saved)` : `${item.label} not saved`,
           ok ? "info" : "warning",

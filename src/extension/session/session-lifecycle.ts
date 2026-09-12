@@ -76,6 +76,7 @@ import {
   clearSkillsCountPublisher,
 } from "../skills/skill-status.ts";
 import { maybeAppendReadHint } from "./read-hints.ts";
+import { parseMotionSettings } from "../../motion/policy.ts";
 
 /**
  * Fire the configured `powerline.costAlert` warning at most once per session.
@@ -182,6 +183,8 @@ export function registerSessionLifecycle(
     rt.resolvedShortcuts = resolveShortcutConfig(settings);
     rt.bashModeSettings = parseBashModeSettings(settings, rt.resolvedShortcuts);
     rt.showLastPrompt = settings.showLastPrompt !== false;
+    rt.motion.reset();
+    rt.motion.setSettings(parseMotionSettings(settings.wishcraft));
     setConfig(parsePowerlineConfig(settings.powerline, PRESET_NAMES));
     rt.queueStore.setSentRetentionMs(
       config.queue.retentionHours * 60 * 60 * 1000,
@@ -238,6 +241,7 @@ export function registerSessionLifecycle(
     rt.welcomeOverlayShouldDismiss = false;
     rt.welcomeDismissScheduler.cancel();
     rt.statusRenderScheduler.cancel();
+    rt.motion.reset();
     rt.restoreFooterStatusRepaintHook?.();
     rt.restoreFooterStatusRepaintHook = null;
     rt.stashShortcutInputUnsubscribe?.();
@@ -294,6 +298,7 @@ export function registerSessionLifecycle(
     rt.currentThinkingLevel =
       rt.getThinkingLevelFn?.() ??
       (typeof event.level === "string" ? event.level : null);
+    rt.motion.arm();
     requestImmediateStatusRender(rt, { deferDuringTyping: false });
   });
 
@@ -307,6 +312,7 @@ export function registerSessionLifecycle(
   // Generate themed working message before agent starts (has access to user's prompt)
   pi.on("before_agent_start", async (event, ctx) => {
     rt.lastUserPrompt = event.prompt;
+    rt.motion.noteText(event.prompt);
     if (ctx.hasUI) {
       onVibeBeforeAgentStart(event.prompt, ctx.ui.setWorkingMessage);
     }
@@ -317,6 +323,7 @@ export function registerSessionLifecycle(
   pi.on("agent_start", async (_event, ctx) => {
     rt.isStreaming = true;
     rt.liveAssistantUsage = null;
+    rt.motion.arm();
     onVibeAgentStart();
     dismissWelcome(rt, ctx);
     rt.currentCtx = ctx;
@@ -422,6 +429,7 @@ export function registerSessionLifecycle(
     rt.isStreaming = false;
     rt.liveAssistantUsage = null;
     rt.coreContextUsageCache.reset();
+    rt.motion.arm();
 
     let hasUI = false;
     try {

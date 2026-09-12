@@ -8,6 +8,10 @@ import {
   getNotificationExtensionStatuses,
 } from "../../config/powerline-config.ts";
 import { ansi, colorEnabled, getFgAnsiCode } from "../../theme/colors.ts";
+import {
+  decorateKeywordLine,
+  decoratePowerlineLine,
+} from "../../motion/runtime.ts";
 
 import { computeResponsiveLayout } from "./layout.ts";
 import { getQueueContext } from "../queue/queue-context.ts";
@@ -92,13 +96,15 @@ export function renderPowerlineStatusLines(
   );
 
   const notifications: string[] = [];
+  const now = Date.now();
+  const paint = rt.motion.getPaint(now);
   for (const value of getNotificationExtensionStatuses(
     statuses,
     hiddenExtensionStatusKeys,
   )) {
     const lineContent = ` ${value}`;
     if (visibleWidth(lineContent) <= width) {
-      notifications.push(lineContent);
+      notifications.push(decoratePowerlineLine(lineContent, paint, now));
     }
   }
 
@@ -113,7 +119,11 @@ export function renderPowerlinePrimaryLines(
   if (!rt.currentCtx) return [];
 
   const layout = getResponsiveLayout(rt, width, theme);
-  return layout.topContent ? [layout.topContent] : [];
+  if (!layout.topContent) return [];
+  const now = Date.now();
+  return [
+    decoratePowerlineLine(layout.topContent, rt.motion.getPaint(now), now),
+  ];
 }
 
 export function renderPowerlineSecondaryLines(
@@ -124,7 +134,15 @@ export function renderPowerlineSecondaryLines(
   if (!rt.currentCtx) return [];
 
   const layout = getResponsiveLayout(rt, width, theme);
-  return layout.secondaryContent ? [layout.secondaryContent] : [];
+  if (!layout.secondaryContent) return [];
+  const now = Date.now();
+  return [
+    decoratePowerlineLine(
+      layout.secondaryContent,
+      rt.motion.getPaint(now),
+      now,
+    ),
+  ];
 }
 
 export function renderPowerlineQueuePreviewLines(
@@ -220,7 +238,16 @@ export function renderLastPromptLines(
 
   promptText = truncateToWidth(promptText, availableWidth, "…");
 
-  const styledPrompt = `${getFgAnsiCode("sep")}${promptText}${reset}`;
+  const now = Date.now();
+  const motionPrompt = decorateKeywordLine(
+    promptText,
+    rt.motion.getSettings(),
+    now,
+  );
+  const styledPrompt =
+    motionPrompt === promptText
+      ? `${getFgAnsiCode("sep")}${promptText}${reset}`
+      : motionPrompt;
   const line = `${prefix}${styledPrompt}`;
   return [truncateToWidth(line, width, "…")];
 }

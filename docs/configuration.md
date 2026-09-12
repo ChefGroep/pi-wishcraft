@@ -231,10 +231,19 @@ Motion is on by default. Turn it off with `wishcraft.welcome.animateLantern: fal
 ```json
 {
   "wishcraft": {
-    "welcome": { "animateLantern": true }
+    "welcome": { "animateLantern": true },
+    "motion": { "enabled": true, "keywords": true }
   }
 }
 ```
+
+## Powerline motion
+
+The status/footer powerline is the session-long motion surface (welcome is only the overlay). Paint is a color overlay on the cached layout so segment scans stay cached and visible width stays stable.
+
+- **Streaming:** catalog style from thinking level (`xhigh`/`max` → rainbow, `high` → ember, otherwise a traveling shimmer).
+- **Keywords:** word-boundary, longest-first. Claude/Codex aliases (`ultrathink`, `ultra`, `think harder`, `think hard`, `think`, `max`, `xhigh`) plus wishcraft names (`lanternwake`, `kongming`, `nova`, …). Typing a trigger starts a ~1.6s burst, then holds the accent. The last-prompt row colors the matched span.
+- Default on. `wishcraft.motion.enabled: false` or `wishcraft.motion.keywords: false` opt out. `WISHCRAFT_REDUCED_MOTION` and `NO_COLOR` skip paint. Host `prefers-reduced-motion` is not detected.
 
 ## Token budget
 

@@ -211,7 +211,7 @@ export function setupCustomEditor(
     const originalHandleInput = editor.handleInput.bind(editor);
     editor.handleInput = (data: string) => {
       rt.lastEditorInputAt = Date.now();
-
+      try {
       const isSubmit =
         keybindings.matches(data, "tui.input.submit") &&
         !keybindings.matches(data, "tui.input.newLine");
@@ -312,6 +312,12 @@ export function setupCustomEditor(
       attachAutocompleteProvider();
       scheduleDismissWelcome(rt, ctx);
       originalHandleInput(data);
+      } finally {
+        if (!rt.bashModeActive) {
+          const draft = editor.getExpandedText();
+          rt.motion.noteText(draft.trim() ? draft : rt.lastUserPrompt);
+        }
+      }
     };
 
     const originalRender = editor.render.bind(editor);

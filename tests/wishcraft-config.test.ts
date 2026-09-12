@@ -37,6 +37,24 @@ test("lantern animation toggle defaults on", () => {
   assert.equal(nextToggleValue(item, null), false);
 });
 
+test("powerline motion toggles default on", () => {
+  const group = buildConfigGroups({}).find(
+    (entry) => entry.title === "Welcome & motion",
+  );
+  assert.ok(group);
+
+  const motion = findItem("Powerline motion");
+  assert.equal(motion.path, "wishcraft.motion.enabled");
+  assert.equal(motion.default, true);
+  assert.equal(displayValue(motion, null), "on");
+  assert.equal(nextToggleValue(motion, null), false);
+
+  const keywords = findItem("Keyword animations");
+  assert.equal(keywords.path, "wishcraft.motion.keywords");
+  assert.equal(keywords.default, true);
+  assert.equal(displayValue(keywords, null), "on");
+});
+
 test("a normal toggle defaults off and the first toggle enables it", () => {
   const item = findItem("Hooks enabled");
   assert.notEqual(item.default, true);
