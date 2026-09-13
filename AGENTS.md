@@ -19,7 +19,7 @@ user customization.
   - `src/extension/` — the extension runtime, organized into domain subfolders:
     `core/` (constants, types, `state.ts` hub, segment-context), `commands/`
     (slash commands, queue commands, bash-mode actions, vibe command),
-    `session/` (activation, session lifecycle, git invalidation, stale-context),
+    `session/` (activation, session lifecycle, agent-turn, git invalidation, stale-context),
     `ui/` (custom editor, layout, menu views, powerline widgets, status-line
     renderers), `history/` (prompt + stash history), `queue/` (queue context +
     integration), `settings/` (settings IO), `shortcuts/` (shortcut config +
@@ -63,6 +63,9 @@ user customization.
 - **Tests:** behavior changes in `src/` need a focused regression test near
   the existing tests for that subsystem; structural tests assert on module
   files in `src/` (never `index.ts`).
+- **Subagents:** when spawning Task subagents, set `model` to composer
+  (`composer-2.5`) or grok 4.6 (`cursor-grok-4.6-high`). Do not pick other
+  families unless the operator names one.
 
 ## Commands
 

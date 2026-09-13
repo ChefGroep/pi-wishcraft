@@ -7,34 +7,7 @@ import { registerCustomSegments } from "../../segments/index.ts";
 import { registerCustomPresets } from "../../config/presets.ts";
 import { invalidateGitStatus } from "../../git/status.ts";
 import { invalidateGitForCommand } from "./git-invalidation.ts";
-import {
-  initVibeManager,
-  onVibeAgentEnd,
-  onVibeAgentStart,
-  onVibeBeforeAgentStart,
-  onVibeToolCall,
-} from "../../working-vibes/index.ts";
-import {
-  getSessionTotalCost,
-  getUsageTokenTotal,
-  isSessionAssistantMessage,
-} from "../../usage/ledger.ts";
-import {
-  formatCostAlertMessage,
-  shouldTriggerCostAlert,
-} from "./cost-alert.ts";
-import {
-  formatTokenBudgetWarning,
-  parseTokenBudget,
-  tokenBudgetLevel,
-} from "../../usage/token-budget.ts";
-import {
-  recordUsageEvent,
-  loadUsageFileFromDisk,
-  tokenTotal,
-  totalsForRange,
-  dayKey,
-} from "../../usage/usage-store.ts";
+import { initVibeManager } from "../../working-vibes/index.ts";
 import {
   detectCustomCompactionEnabled,
   readSettings,
@@ -67,88 +40,16 @@ import {
   setConfig,
   setCustomCompactionEnabled,
 } from "../core/state.ts";
-import { CONTEXT_STATUS_RENDER_MS } from "../core/constants.ts";
 import type { RuntimeState } from "../core/types.ts";
-import { isStaleExtensionContextError } from "./stale-context.ts";
-import { dismissWelcome } from "../welcome/welcome-control.ts";
 import {
   bindSkillsCountPublisher,
   clearSkillsCountPublisher,
 } from "../skills/skill-status.ts";
 import { maybeAppendReadHint } from "./read-hints.ts";
 import { parseMotionSettings } from "../../motion/policy.ts";
-
-/**
- * Fire the configured `powerline.costAlert` warning at most once per session.
- * Reads the running cost from the (cached) token ledger so repeated calls are
- * cheap; a UI-less or already-notified session short-circuits immediately.
- */
-function maybeNotifyCostAlert(rt: RuntimeState, ctx: any): void {
-  if (!ctx?.hasUI || rt.costAlertNotified) return;
-  const threshold = config.costAlert;
-  const sessionEvents = rt.sessionBranchCache.get(ctx.sessionManager);
-  const totalCost = getSessionTotalCost(rt.tokenStatsCache.get(sessionEvents));
-  if (
-    !shouldTriggerCostAlert({
-      totalCost,
-      threshold,
-      alreadyNotified: rt.costAlertNotified,
-    })
-  ) {
-    return;
-  }
-  rt.costAlertNotified = true;
-  ctx.ui.notify(
-    formatCostAlertMessage(
-      totalCost,
-      threshold as number,
-      config.segmentOptions?.cost?.currency ?? "USD",
-    ),
-    "warning",
-  );
-}
-
-function maybeNotifyTokenBudget(rt: RuntimeState, ctx: any): void {
-  if (!ctx?.hasUI) return;
-  const daily = parseTokenBudget(readSettings(ctx.cwd ?? process.cwd()).wishcraft)
-    .daily;
-  if (!daily) return;
-  const now = Date.now();
-  const todayStart = Date.parse(`${dayKey(now)}T00:00:00`);
-  const used = tokenTotal(
-    totalsForRange(loadUsageFileFromDisk(), todayStart, now + 1),
-  );
-  const { level } = tokenBudgetLevel(used, daily);
-  if (level === 0 || level <= rt.tokenBudgetNotifiedLevel) return;
-  rt.tokenBudgetNotifiedLevel = level;
-  ctx.ui.notify(formatTokenBudgetWarning(used, daily, level), "warning");
-}
-
-// Helper to extract recent agent response text (skipping thinking blocks)
-function getRecentAgentContext(ctx: any): string | undefined {
-  const sessionEvents = ctx.sessionManager?.getBranch?.() ?? [];
-
-  // Find the most recent assistant message
-  for (let i = sessionEvents.length - 1; i >= 0; i--) {
-    const e = sessionEvents[i];
-    if (e.type === "message" && e.message?.role === "assistant") {
-      const content = e.message.content;
-      if (!Array.isArray(content)) continue;
-
-      // Extract text content, skip thinking blocks
-      for (const block of content) {
-        if (block.type === "text" && block.text) {
-          // Return first ~200 chars of non-empty text
-          const text = block.text.trim();
-          if (text.length > 0) {
-            return text.slice(0, 200);
-          }
-        }
-      }
-    }
-  }
-  return undefined;
-}
+import { registerAgentTurnHandlers } from "./agent-turn.ts";
+import { maybeNotifyTokenBudget } from "./session-alerts.ts";
+import { dismissWelcome } from "../welcome/welcome-control.ts";
 
 export function shouldShowStartupWelcome(
   reason: unknown,
@@ -161,7 +62,6 @@ export function registerSessionLifecycle(
   pi: ExtensionAPI,
   rt: RuntimeState,
 ): void {
-  // Track session start
   pi.on("session_start", async (event, ctx) => {
     clearSkillsCountPublisher();
     rt.shellSession?.dispose();
@@ -214,7 +114,6 @@ export function registerSessionLifecycle(
       }
     }
 
-    // Initialize vibe manager (needs modelRegistry from ctx)
     initVibeManager(ctx);
 
     if (rt.enabled && ctx.hasUI) {
@@ -266,13 +165,11 @@ export function registerSessionLifecycle(
     resetLayoutCache(rt);
   });
 
-  // Invalidate git status on file changes, trigger re-render on potential branch changes
   pi.on("tool_result", async (event, ctx) => {
     if (event.toolName === "write" || event.toolName === "edit") {
       invalidateGitStatus();
       requestStatusRender(rt);
     }
-    // Check for bash commands that might change git branch
     if (event.toolName === "bash" && event.input?.command) {
       invalidateGitForCommand(rt, String(event.input.command));
     }
@@ -281,9 +178,6 @@ export function registerSessionLifecycle(
     }
   });
 
-  // Also catch user escape commands (! prefix)
-  // Note: This fires BEFORE execution, so we use a longer delay and multiple re-renders
-  // to ensure we catch the update after the command completes.
   pi.on("user_bash", async (event) => {
     invalidateGitForCommand(rt, event.command, { stagger: true });
   });
@@ -294,86 +188,10 @@ export function registerSessionLifecycle(
     requestStatusRender(rt);
   });
 
-  pi.on("thinking_level_select", async (event, ctx) => {
-    rt.currentCtx = ctx;
-    rt.currentThinkingLevel =
-      rt.getThinkingLevelFn?.() ??
-      (typeof event.level === "string" ? event.level : null);
-    rt.motion.arm();
-    requestImmediateStatusRender(rt, { deferDuringTyping: false });
-  });
-
   pi.on("session_tree", async (_event, ctx) => {
     rt.currentCtx = ctx;
     rt.currentThinkingLevel = null;
     rt.liveAssistantUsage = null;
-    requestImmediateStatusRender(rt, { deferDuringTyping: false });
-  });
-
-  // Generate themed working message before agent starts (has access to user's prompt)
-  pi.on("before_agent_start", async (event, ctx) => {
-    rt.lastUserPrompt = event.prompt;
-    if (ctx.hasUI) {
-      onVibeBeforeAgentStart(event.prompt, ctx.ui.setWorkingMessage);
-    }
-  });
-
-  // Track streaming state (footer only shows status during streaming)
-  // Also dismiss welcome when agent starts responding (handles `p "command"` case)
-  pi.on("agent_start", async (_event, ctx) => {
-    rt.isStreaming = true;
-    rt.liveAssistantUsage = null;
-    rt.motion.arm();
-    onVibeAgentStart();
-    dismissWelcome(rt, ctx);
-    rt.currentCtx = ctx;
-  });
-
-  pi.on("message_update", async (event, ctx) => {
-    if (
-      isSessionAssistantMessage(event.message) &&
-      event.message.stopReason !== "error" &&
-      event.message.stopReason !== "aborted" &&
-      getUsageTokenTotal(event.message.usage) > 0
-    ) {
-      rt.liveAssistantUsage = event.message.usage;
-      rt.currentCtx = ctx;
-      rt.layoutDirty = true;
-      rt.statusRenderScheduler.schedule(CONTEXT_STATUS_RENDER_MS);
-    }
-  });
-
-  pi.on("message_end", async (event, ctx) => {
-    rt.currentCtx = ctx;
-    rt.coreContextUsageCache.reset();
-    if (isSessionAssistantMessage(event.message)) {
-      if (
-        event.message.stopReason === "error" ||
-        event.message.stopReason === "aborted"
-      ) {
-        rt.liveAssistantUsage = null;
-      } else if (getUsageTokenTotal(event.message.usage) > 0) {
-        rt.liveAssistantUsage = event.message.usage;
-        const usage = event.message.usage;
-        recordUsageEvent({
-          at: Date.now(),
-          model: ctx.model?.id ?? ctx.model?.name,
-          input: usage.input,
-          output: usage.output,
-          cacheRead: usage.cacheRead,
-          cacheWrite: usage.cacheWrite,
-          cost: usage.cost.total,
-        });
-      }
-    }
-    requestImmediateStatusRender(rt, { deferDuringTyping: false });
-    maybeNotifyCostAlert(rt, ctx);
-    maybeNotifyTokenBudget(rt, ctx);
-  });
-
-  pi.on("turn_end", async (_event, ctx) => {
-    rt.currentCtx = ctx;
-    rt.coreContextUsageCache.reset();
     requestImmediateStatusRender(rt, { deferDuringTyping: false });
   });
 
@@ -386,8 +204,6 @@ export function registerSessionLifecycle(
   pi.on("session_compact", async (event, ctx) => {
     rt.powerlineCompacting = false;
     rt.currentCtx = ctx;
-    // Compaction rewrites the conversation, so the cached context-usage (tokens/window/percent)
-    // is stale. Reset it and force a redraw — otherwise the bar keeps showing the pre-compact fill.
     rt.coreContextUsageCache.reset();
     requestImmediateStatusRender(rt, { deferDuringTyping: false });
     if (event.willRetry) {
@@ -410,64 +226,5 @@ export function registerSessionLifecycle(
     }
   });
 
-  // Also dismiss on tool calls (agent is working) + refresh vibe if rate limit allows
-  pi.on("tool_call", async (event, ctx) => {
-    dismissWelcome(rt, ctx);
-    if (ctx.hasUI) {
-      // Extract recent agent context from session for richer vibe generation
-      const agentContext = getRecentAgentContext(ctx);
-      onVibeToolCall(
-        event.toolName,
-        event.input,
-        ctx.ui.setWorkingMessage,
-        agentContext,
-      );
-    }
-  });
-
-  pi.on("agent_end", async (_event, ctx) => {
-    rt.isStreaming = false;
-    rt.liveAssistantUsage = null;
-    rt.coreContextUsageCache.reset();
-    rt.motion.arm();
-
-    let hasUI = false;
-    try {
-      hasUI = Boolean(ctx.hasUI);
-    } catch (error) {
-      if (!isStaleExtensionContextError(error)) throw error;
-      rt.currentCtx = null;
-      return;
-    }
-
-    rt.currentCtx = ctx;
-    try {
-      if (hasUI) {
-        onVibeAgentEnd(ctx.ui.setWorkingMessage); // working-vibes internal state + reset message
-        if (rt.stashedEditorText !== null) {
-          if (ctx.ui.getEditorText().trim() === "") {
-            ctx.ui.setEditorText(rt.stashedEditorText);
-            rt.stashedEditorText = null;
-            ctx.ui.setStatus("stash", undefined);
-            ctx.ui.notify("Stash restored", "info");
-          } else {
-            ctx.ui.notify(
-              "Stash preserved — clear editor then Alt+S to restore",
-              "info",
-            );
-          }
-        }
-        maybeNotifyCostAlert(rt, ctx);
-      }
-    } catch (error) {
-      if (!isStaleExtensionContextError(error)) throw error;
-      rt.currentCtx = null;
-      return;
-    }
-
-    requestStatusRender(rt);
-    if (!rt.powerlineCompacting && !rt.deliverAfterRetrySettles) {
-      schedulePostCompactionDelivery(pi, rt, ctx);
-    }
-  });
+  registerAgentTurnHandlers(pi, rt);
 }

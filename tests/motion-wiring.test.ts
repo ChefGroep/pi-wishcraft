@@ -14,6 +14,10 @@ const lifecycle = readFileSync(
   new URL("../src/extension/session/session-lifecycle.ts", import.meta.url),
   "utf8",
 );
+const agentTurn = readFileSync(
+  new URL("../src/extension/session/agent-turn.ts", import.meta.url),
+  "utf8",
+);
 const state = readFileSync(
   new URL("../src/extension/core/state.ts", import.meta.url),
   "utf8",
@@ -47,8 +51,9 @@ test("session lifecycle arms motion on stream edges and resets per session", () 
   assert.match(lifecycle, /rt\.motion\.reset\(\)/);
   assert.match(lifecycle, /rt\.motion\.setSettings\(parseMotionSettings\(settings\.wishcraft\)\)/);
   assert.doesNotMatch(lifecycle, /rt\.motion\.noteText\(event\.prompt\)/);
+  assert.doesNotMatch(agentTurn, /rt\.motion\.noteText\(event\.prompt\)/);
   assert.match(lifecycle, /rt\.isStreaming = false/);
-  assert.match(lifecycle, /rt\.motion\.arm\(\)/);
+  assert.match(agentTurn, /rt\.motion\.arm\(\)/);
   assert.match(state, /createMotionRuntime\(/);
   assert.match(state, /rt\.tuiRef\?\.requestRender\(\)/);
   assert.doesNotMatch(runtime, /extension\/core\/state/);

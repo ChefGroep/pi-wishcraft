@@ -15,6 +15,10 @@ const source = readFileSync(
   new URL("../src/extension/session/session-lifecycle.ts", import.meta.url),
   "utf-8",
 );
+const agentTurnSource = readFileSync(
+  new URL("../src/extension/session/agent-turn.ts", import.meta.url),
+  "utf-8",
+);
 const originalNerdFonts = process.env.POWERLINE_NERD_FONTS;
 process.env.POWERLINE_NERD_FONTS = "0";
 
@@ -251,11 +255,22 @@ test("stale ctx guard handles old and new Pi messages on agent_end", () => {
     false,
   );
   assert.match(
-    source,
+    agentTurnSource,
     /let hasUI = false;\r?\n\s+try \{\r?\n\s+hasUI = Boolean\(ctx\.hasUI\);/,
   );
   assert.match(
-    source,
+    agentTurnSource,
     /if \(!isStaleExtensionContextError\(error\)\) throw error;\r?\n\s+rt\.currentCtx = null;\r?\n\s+return;/,
   );
+});
+
+test("session modules stay under the 450-line split note", () => {
+  const limit = 450;
+  for (const [name, text] of [
+    ["session-lifecycle.ts", source],
+    ["agent-turn.ts", agentTurnSource],
+  ] as const) {
+    const lines = text.split("\n").length;
+    assert.ok(lines <= limit, `${name} is ${lines} lines (limit ${limit})`);
+  }
 });

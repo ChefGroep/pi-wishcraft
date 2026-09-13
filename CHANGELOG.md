@@ -9,9 +9,8 @@
 - Welcome overlay shows the Kongming lantern again, with a spatial flame flicker (~10 fps). `wishcraft.welcome.animateLantern` (default on) and `WISHCRAFT_REDUCED_MOTION` control motion. The header, `NO_COLOR`, and reduced-motion stays stay still.
 - Named motion looks use catalog speed and nine distinct geometries (traveling gold, hue chase, ember trail, heat bloom, aurora wash, comet tail, prism split, tide, pulse) instead of one intensity curve.
 
-### Fixed
-- Keyword motion no longer keeps the idle status bar lit after submit. Hold is draft-only; the last-prompt row still colors the matched word.
-- Keyword span indexes are Unicode code points, so a trigger after an emoji paints the right slice.
+### Changed
+- Session start/shutdown stays in `session-lifecycle.ts`; agent-turn handlers, cost/budget notifies, and recent-agent context live in sibling modules so the lifecycle file stays under the ~450-line split note.
 
 ## [1.1.1] - 2026-09-12
 
