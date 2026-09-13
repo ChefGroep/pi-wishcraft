@@ -118,7 +118,7 @@ export function decorateKeywordLine(
   settings: MotionSettings,
   now: number,
   env?: NodeJS.ProcessEnv,
-  color?: boolean;
+  color?: boolean,
 ): string {
   if (!text) return text;
   const envOf = env ?? process.env;
