@@ -180,15 +180,16 @@ export function createMotionRuntime(
     });
   }
 
-  function shouldTick(now: number): boolean {
-    return snapshot(now).kind !== "none";
+  function needsPaint(): boolean {
+    if (!motionPaintAllowed(settings, envOf(), colorOn())) return false;
+    if (settings.keywords && keyword !== null) return true;
+    return opts.getStreaming();
   }
 
   function schedule(): void {
     const handle = setTimeout(() => {
       timer = null;
-      const now = clock();
-      if (!shouldTick(now)) return;
+      if (!needsPaint()) return;
       opts.paint();
       schedule();
     }, MOTION_TICK_MS);
@@ -196,8 +197,8 @@ export function createMotionRuntime(
     timer = handle;
   }
 
-  function syncTimer(now = clock()): void {
-    if (shouldTick(now)) {
+  function syncTimer(): void {
+    if (needsPaint()) {
       if (timer === null) {
         opts.paint();
         schedule();
@@ -223,7 +224,7 @@ export function createMotionRuntime(
         burstUntil = 0;
       }
       keyword = hit;
-      syncTimer(now);
+      syncTimer();
     },
     setSettings(next: MotionSettings) {
       settings = { enabled: next.enabled, keywords: next.keywords };

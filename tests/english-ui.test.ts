@@ -15,6 +15,7 @@ test("operator UI modules do not ship Dutch overlay copy", () => {
     read("src/extension/skills/skill-registry.ts"),
     read("src/extension/ui/overlay-chrome.ts"),
     read("src/extension/settings/wishcraft-config.ts"),
+    read("src/extension/settings/wishcraft-config-overlay.ts"),
   ].join("\n");
 
   assert.doesNotMatch(sources, /geen skills voor/i);

@@ -49,6 +49,7 @@ export class WelcomeComponent implements Component {
   }
 
   setCountdown(seconds: number): void {
+    if (this.countdown === seconds) return;
     this.countdown = seconds;
   }
 

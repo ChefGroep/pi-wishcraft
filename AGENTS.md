@@ -22,7 +22,7 @@ user customization.
     `session/` (activation, session lifecycle, agent-turn, git invalidation, stale-context),
     `ui/` (custom editor, layout, menu views, powerline widgets, status-line
     renderers), `history/` (prompt + stash history), `queue/` (queue context +
-    integration), `settings/` (settings IO), `shortcuts/` (shortcut config +
+    integration), `settings/` (settings IO, `/wishcraft` overlay), `shortcuts/` (shortcut config +
     router), `welcome/` (welcome control + integration), `skills/` (inline
     invocation). Leaf modules keep the dependency graph acyclic: shared types
     and constants live in `core/`, queue/welcome callbacks are wired through

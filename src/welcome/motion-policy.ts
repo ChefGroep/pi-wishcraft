@@ -8,15 +8,12 @@
  */
 
 import { reducedMotionEnabled } from "../motion/policy.ts";
+import { isRecord } from "../config/primitives.ts";
 
 export { reducedMotionEnabled };
 
 export const WELCOME_LANTERN_TICK_MS = 100;
 export const WELCOME_COUNTDOWN_MS = 1000;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 /**
  * Default on. `wishcraft.welcome.animateLantern: false` is the opt-out.

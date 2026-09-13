@@ -27,8 +27,6 @@ import type { RuntimeState } from "../core/types.ts";
 
 /**
  * Fire the configured `powerline.costAlert` warning at most once per session.
- * Reads the running cost from the (cached) token ledger so repeated calls are
- * cheap; a UI-less or already-notified session short-circuits immediately.
  */
 export function maybeNotifyCostAlert(rt: RuntimeState, ctx: any): void {
   if (!ctx?.hasUI || rt.costAlertNotified) return;

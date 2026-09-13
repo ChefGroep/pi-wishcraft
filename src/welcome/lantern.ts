@@ -7,7 +7,7 @@
  * gain 1 so the art is static.
  */
 
-import { colorEnabled } from "../theme/colors.ts";
+import { ansi, clampByte, colorEnabled } from "../theme/colors.ts";
 import { LANTERN_ROWS } from "./lantern-art.ts";
 
 export interface LanternFrame {
@@ -27,6 +27,17 @@ interface Cell {
   b: number;
 }
 
+const TASSEL_ROW = 14;
+const FLAME_GREEN_MIN = 36;
+
+function classify(cell: Cell, y: number): LanternRegion {
+  const chroma =
+    Math.max(cell.r, cell.g, cell.b) - Math.min(cell.r, cell.g, cell.b);
+  if (y >= TASSEL_ROW || chroma < 40) return "tassel";
+  if (cell.g >= FLAME_GREEN_MIN) return "flame";
+  return "paper";
+}
+
 const GRID: Array<Array<Cell | null>> = LANTERN_ROWS.map((row) =>
   row.split("|").map((c) => {
     if (c === "-") return null;
@@ -35,29 +46,19 @@ const GRID: Array<Array<Cell | null>> = LANTERN_ROWS.map((row) =>
   }),
 );
 
+const REGIONS: Array<Array<LanternRegion | null>> = GRID.map((row, y) =>
+  row.map((cell) => (cell ? classify(cell, y) : null)),
+);
+
 const WIDTH = GRID[0]?.length ?? 0;
 const PIXEL_HEIGHT = GRID.length;
-const TASSEL_ROW = 14;
-const FLAME_GREEN_MIN = 36;
-
-function clampByte(n: number): number {
-  return Math.max(0, Math.min(255, Math.round(n)));
-}
 
 function fg(cell: Cell): string {
-  return `\x1b[38;2;${clampByte(cell.r)};${clampByte(cell.g)};${clampByte(cell.b)}m`;
+  return ansi.getFgAnsi(clampByte(cell.r), clampByte(cell.g), clampByte(cell.b));
 }
 
 function bg(cell: Cell): string {
-  return `\x1b[48;2;${clampByte(cell.r)};${clampByte(cell.g)};${clampByte(cell.b)}m`;
-}
-
-function classify(cell: Cell, y: number): LanternRegion {
-  const chroma =
-    Math.max(cell.r, cell.g, cell.b) - Math.min(cell.r, cell.g, cell.b);
-  if (y >= TASSEL_ROW || chroma < 40) return "tassel";
-  if (cell.g >= FLAME_GREEN_MIN) return "flame";
-  return "paper";
+  return ansi.getBgAnsi(clampByte(cell.r), clampByte(cell.g), clampByte(cell.b));
 }
 
 function gainForRegion(
@@ -111,24 +112,29 @@ export function lanternGainAt(
   y: number,
   still = false,
 ): number {
-  const cell = GRID[y]?.[x];
-  if (!cell) return 1;
+  const region = REGIONS[y]?.[x];
+  if (!region) return 1;
   if (still) return 1;
-  return gainForRegion(classify(cell, y), now / 1000, x, y);
+  return gainForRegion(region, now / 1000, x, y);
 }
 
 /** Region at pixel `(x, y)`, or `null` when the cell is empty. */
 export function lanternRegionAt(x: number, y: number): LanternRegion | null {
-  const cell = GRID[y]?.[x];
-  if (!cell) return null;
-  return classify(cell, y);
+  return REGIONS[y]?.[x] ?? null;
 }
 
-function paintCell(cell: Cell, x: number, y: number, frame: LanternFrame): Cell {
-  if (frame.still) return cell;
-  const region = classify(cell, y);
-  const gain = gainForRegion(region, frame.now / 1000, x, y);
-  return shade(cell, gain, region);
+function paintCell(cell: Cell, x: number, y: number, t: number): Cell {
+  const region = REGIONS[y]?.[x];
+  if (!region) return cell;
+  return shade(cell, gainForRegion(region, t, x, y), region);
+}
+
+function halfBlock(up: Cell | null, lo: Cell | null, color: boolean): string {
+  if (!up && !lo) return " ";
+  if (!color) return up ? "▀" : "▄";
+  if (up && lo) return `${fg(up)}${bg(lo)}▀${ansi.reset}`;
+  if (up) return `${fg(up)}▀${ansi.reset}`;
+  return `${fg(lo!)}▄${ansi.reset}`;
 }
 
 /**
@@ -139,6 +145,8 @@ export function renderLantern(frame: LanternFrame, maxWidth: number): string[] {
   if (WIDTH === 0 || WIDTH > maxWidth) return [];
 
   const color = frame.color ?? colorEnabled();
+  const animate = color && !frame.still;
+  const t = frame.now / 1000;
   const lines: string[] = [];
   for (let y = 0; y < PIXEL_HEIGHT; y += 2) {
     const upper = GRID[y] ?? [];
@@ -147,19 +155,9 @@ export function renderLantern(frame: LanternFrame, maxWidth: number): string[] {
     for (let x = 0; x < WIDTH; x++) {
       const upRaw = upper[x] ?? null;
       const loRaw = lower[x] ?? null;
-      const up = upRaw ? paintCell(upRaw, x, y, frame) : null;
-      const lo = loRaw ? paintCell(loRaw, x, y + 1, frame) : null;
-      if (!up && !lo) {
-        line += " ";
-      } else if (!color) {
-        line += up && lo ? "▀" : up ? "▀" : "▄";
-      } else if (up && lo) {
-        line += `${fg(up)}${bg(lo)}▀\x1b[0m`;
-      } else if (up) {
-        line += `${fg(up)}▀\x1b[0m`;
-      } else {
-        line += `${fg(lo!)}▄\x1b[0m`;
-      }
+      const up = upRaw && animate ? paintCell(upRaw, x, y, t) : upRaw;
+      const lo = loRaw && animate ? paintCell(loRaw, x, y + 1, t) : loRaw;
+      line += halfBlock(up, lo, color);
     }
     lines.push(line);
   }

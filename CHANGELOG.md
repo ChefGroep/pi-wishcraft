@@ -8,6 +8,7 @@
 ### Improved
 - Welcome overlay shows the Kongming lantern again, with a spatial flame flicker (~10 fps). `wishcraft.welcome.animateLantern` (default on) and `WISHCRAFT_REDUCED_MOTION` control motion. The header, `NO_COLOR`, and reduced-motion stays stay still.
 - Named motion looks use catalog speed and nine distinct geometries (traveling gold, hue chase, ember trail, heat bloom, aurora wash, comet tail, prism split, tide, pulse) instead of one intensity curve.
+- `/wishcraft` overlay lives next to the settings model so both files stay under the ~450-line split note.
 
 ### Changed
 - Session start/shutdown stays in `session-lifecycle.ts`; agent-turn handlers, cost/budget notifies, and recent-agent context live in sibling modules so the lifecycle file stays under the ~450-line split note.

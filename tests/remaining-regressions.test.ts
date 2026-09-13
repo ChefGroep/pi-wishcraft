@@ -19,6 +19,14 @@ const agentTurnSource = readFileSync(
   new URL("../src/extension/session/agent-turn.ts", import.meta.url),
   "utf-8",
 );
+const wishcraftConfigSource = readFileSync(
+  new URL("../src/extension/settings/wishcraft-config.ts", import.meta.url),
+  "utf-8",
+);
+const wishcraftOverlaySource = readFileSync(
+  new URL("../src/extension/settings/wishcraft-config-overlay.ts", import.meta.url),
+  "utf-8",
+);
 const originalNerdFonts = process.env.POWERLINE_NERD_FONTS;
 process.env.POWERLINE_NERD_FONTS = "0";
 
@@ -269,6 +277,8 @@ test("session modules stay under the 450-line split note", () => {
   for (const [name, text] of [
     ["session-lifecycle.ts", source],
     ["agent-turn.ts", agentTurnSource],
+    ["wishcraft-config.ts", wishcraftConfigSource],
+    ["wishcraft-config-overlay.ts", wishcraftOverlaySource],
   ] as const) {
     const lines = text.split("\n").length;
     assert.ok(lines <= limit, `${name} is ${lines} lines (limit ${limit})`);

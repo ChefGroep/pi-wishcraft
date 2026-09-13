@@ -4,11 +4,8 @@
  */
 
 import { colorEnabled } from "../theme/colors.ts";
+import { isRecord } from "../config/primitives.ts";
 import type { MotionSettings } from "./types.ts";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 export function reducedMotionEnabled(
   env: NodeJS.ProcessEnv = process.env,
