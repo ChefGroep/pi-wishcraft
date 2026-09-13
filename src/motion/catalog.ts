@@ -1,6 +1,18 @@
-import type { MotionCatalogEntry } from "./types.ts";
+import type { MotionIntensity, MotionStyleId } from "./types.ts";
 
-export const MOTION_CATALOG: readonly MotionCatalogEntry[] = [
+export const THINKING_LEVELS = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
+
+export const MOTION_CATALOG = [
   { id: "ember-relay", name: "Ember Relay", style: "ember", intensity: 3, speed: 1, description: "Warm trail along the bar while work is happening." },
   { id: "lanternwake", name: "Lanternwake", style: "ember", intensity: 4, speed: 1.1, description: "Kongming signature: gold on paper-red." },
   { id: "wisp", name: "Wisp", style: "pulse", intensity: 1, speed: 0.6, description: "Soft brightness breathe." },
@@ -31,29 +43,60 @@ export const MOTION_CATALOG: readonly MotionCatalogEntry[] = [
   { id: "max-effort", name: "Max Effort", style: "rainbow", intensity: 5, speed: 1.45, description: "Codex max / xhigh." },
   { id: "wish-rise", name: "Wish Rise", style: "ember", intensity: 2, speed: 0.9, description: "Soft wish lift." },
   { id: "zenith", name: "Zenith", style: "rainbow", intensity: 4, speed: 1.2, description: "High but not nova." },
-];
+] as const satisfies ReadonlyArray<{
+  id: string;
+  name: string;
+  style: MotionStyleId;
+  intensity: MotionIntensity;
+  speed: number;
+  description: string;
+}>;
+
+export type MotionCatalogEntry = (typeof MOTION_CATALOG)[number];
+export type MotionCatalogId = MotionCatalogEntry["id"];
 
 export const MOTION_CATALOG_COUNT = MOTION_CATALOG.length;
 
-const BY_ID = new Map(MOTION_CATALOG.map((entry) => [entry.id, entry]));
+const CATALOG_BY_ID = Object.fromEntries(
+  MOTION_CATALOG.map((entry) => [entry.id, entry]),
+) as Record<MotionCatalogId, MotionCatalogEntry>;
 
-export function getMotionCatalogEntry(id: string): MotionCatalogEntry | undefined {
-  return BY_ID.get(id);
+export function parseThinkingLevel(
+  raw: string | null | undefined,
+): ThinkingLevel | null {
+  if (raw == null) return null;
+  for (const level of THINKING_LEVELS) {
+    if (raw === level) return level;
+  }
+  return null;
 }
 
-export function thinkingMotion(level: string): MotionCatalogEntry | null {
+export function getMotionCatalogEntry(id: MotionCatalogId): MotionCatalogEntry {
+  return CATALOG_BY_ID[id];
+}
+
+export function thinkingMotion(
+  level: Exclude<ThinkingLevel, "off">,
+): MotionCatalogEntry;
+export function thinkingMotion(level: "off"): null;
+export function thinkingMotion(level: ThinkingLevel): MotionCatalogEntry | null;
+export function thinkingMotion(level: ThinkingLevel): MotionCatalogEntry | null {
   switch (level) {
     case "minimal":
     case "low":
-      return BY_ID.get("wisp") ?? null;
+      return getMotionCatalogEntry("wisp");
     case "medium":
-      return BY_ID.get("shimmer-work") ?? null;
+      return getMotionCatalogEntry("shimmer-work");
     case "high":
-      return BY_ID.get("ember-relay") ?? null;
+      return getMotionCatalogEntry("ember-relay");
     case "xhigh":
     case "max":
-      return BY_ID.get("rainbow-ultra") ?? null;
-    default:
+      return getMotionCatalogEntry("rainbow-ultra");
+    case "off":
       return null;
+    default: {
+      const _exhaustive: never = level;
+      return _exhaustive;
+    }
   }
 }

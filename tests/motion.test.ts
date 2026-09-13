@@ -6,6 +6,7 @@ import {
   MOTION_CATALOG,
   MOTION_CATALOG_COUNT,
   getMotionCatalogEntry,
+  parseThinkingLevel,
   thinkingMotion,
 } from "../src/motion/catalog.ts";
 import { KEYWORD_COUNT, keywordCatalog, matchKeyword } from "../src/motion/keywords.ts";
@@ -16,6 +17,7 @@ import {
 import { KEYWORD_BURST_MS } from "../src/motion/types.ts";
 import { parseMotionSettings } from "../src/motion/policy.ts";
 import {
+  NONE_PAINT,
   createMotionRuntime,
   decorateKeywordLine,
   decoratePowerlineLine,
@@ -37,8 +39,9 @@ test("keyword catalog is at least 30 unique word-boundary triggers", () => {
   assert.equal(new Set(ids).size, keywords.length);
   assert.equal(new Set(patterns).size, keywords.length);
   for (const entry of keywords) {
-    assert.ok(
-      getMotionCatalogEntry(entry.catalogId),
+    assert.equal(
+      getMotionCatalogEntry(entry.catalogId).id,
+      entry.catalogId,
       `missing catalog id ${entry.catalogId} for ${entry.id}`,
     );
   }
@@ -65,7 +68,6 @@ test("applyMotionStyle changes over time and keeps visible width", () => {
   assert.equal(visibleWidth(t0), visibleWidth(sample));
   assert.equal(visibleWidth(t1), visibleWidth(sample));
   assert.equal(stripMotionAnsi(t0), stripMotionAnsi(sample).replace(/\x1b\[[0-9;]*m/g, ""));
-  assert.equal(visibleWidth(applyMotionStyle(sample, "none", 1, 0)), visibleWidth(sample));
 });
 
 test("resolveMotionPaint priority is keyword, then thinking, then streaming shimmer", () => {
@@ -81,7 +83,7 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
     now: 0,
     color: true,
   });
-  assert.equal(idle.style, "none");
+  assert.equal(idle.kind, "none");
 
   const burst = resolveMotionPaint({
     settings: { enabled: true, keywords: true },
@@ -92,6 +94,7 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
     now: 0,
     color: true,
   });
+  assert.equal(burst.kind, "keyword");
   assert.equal(burst.style, "rainbow");
   assert.equal(burst.burst, true);
   assert.equal(burst.catalogId, "ultrathink");
@@ -105,6 +108,7 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
     now: 2000,
     color: true,
   });
+  assert.equal(hold.kind, "keyword");
   assert.equal(hold.style, "rainbow");
   assert.equal(hold.burst, false);
 
@@ -117,6 +121,7 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
     now: 0,
     color: true,
   });
+  assert.equal(thinking.kind, "catalog");
   assert.equal(thinking.catalogId, "rainbow-ultra");
   assert.equal(thinking.style, "rainbow");
 
@@ -129,6 +134,7 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
     now: 0,
     color: true,
   });
+  assert.equal(streaming.kind, "catalog");
   assert.equal(streaming.catalogId, "shimmer-work");
 
   const reduced = resolveMotionPaint({
@@ -141,7 +147,7 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
     env: { WISHCRAFT_REDUCED_MOTION: "1" },
     color: true,
   });
-  assert.equal(reduced.style, "none");
+  assert.equal(reduced.kind, "none");
 
   const noColor = resolveMotionPaint({
     settings: { enabled: true, keywords: true },
@@ -152,17 +158,20 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
     now: 0,
     color: false,
   });
-  assert.equal(noColor.style, "none");
+  assert.equal(noColor.kind, "none");
 });
 
 test("thinkingMotion maps high effort to rainbow and low effort to wisp", () => {
-  assert.equal(thinkingMotion("minimal")?.id, "wisp");
-  assert.equal(thinkingMotion("low")?.id, "wisp");
-  assert.equal(thinkingMotion("medium")?.id, "shimmer-work");
-  assert.equal(thinkingMotion("high")?.id, "ember-relay");
-  assert.equal(thinkingMotion("xhigh")?.id, "rainbow-ultra");
-  assert.equal(thinkingMotion("max")?.id, "rainbow-ultra");
+  assert.equal(thinkingMotion("minimal").id, "wisp");
+  assert.equal(thinkingMotion("low").id, "wisp");
+  assert.equal(thinkingMotion("medium").id, "shimmer-work");
+  assert.equal(thinkingMotion("high").id, "ember-relay");
+  assert.equal(thinkingMotion("xhigh").id, "rainbow-ultra");
+  assert.equal(thinkingMotion("max").id, "rainbow-ultra");
   assert.equal(thinkingMotion("off"), null);
+  assert.equal(parseThinkingLevel("max"), "max");
+  assert.equal(parseThinkingLevel("nope"), null);
+  assert.equal(parseThinkingLevel(null), null);
 });
 
 test("parseMotionSettings defaults on", () => {
@@ -196,28 +205,32 @@ test("motion runtime bursts then holds a keyword and idles without one", () => {
   });
 
   try {
-    assert.equal(runtime.getPaint().style, "none");
+    assert.equal(runtime.getPaint().kind, "none");
     runtime.noteText("please ultrathink this");
     const burst = runtime.getPaint();
+    assert.equal(burst.kind, "keyword");
     assert.equal(burst.style, "rainbow");
     assert.equal(burst.burst, true);
     assert.ok(paints.length >= 1);
 
     now = 1000 + KEYWORD_BURST_MS + 50;
     const hold = runtime.getPaint();
+    assert.equal(hold.kind, "keyword");
     assert.equal(hold.style, "rainbow");
     assert.equal(hold.burst, false);
 
     runtime.noteText("plain question");
-    assert.equal(runtime.getPaint().style, "none");
+    assert.equal(runtime.getPaint().kind, "none");
 
     streaming = true;
     thinkingLevel = "high";
     runtime.arm();
-    assert.equal(runtime.getPaint().catalogId, "ember-relay");
+    const streamingPaint = runtime.getPaint();
+    assert.equal(streamingPaint.kind, "catalog");
+    assert.equal(streamingPaint.catalogId, "ember-relay");
 
     runtime.setSettings({ enabled: false, keywords: true });
-    assert.equal(runtime.getPaint().style, "none");
+    assert.equal(runtime.getPaint().kind, "none");
   } finally {
     runtime.reset();
   }
@@ -237,7 +250,7 @@ test("decorate helpers keep width and skip when paint is none", () => {
   const overlay = decoratePowerlineLine(line, paint, 80);
   assert.notEqual(overlay, line);
   assert.equal(visibleWidth(overlay), visibleWidth(line));
-  assert.equal(decoratePowerlineLine(line, { ...paint, style: "none" }, 80), line);
+  assert.equal(decoratePowerlineLine(line, NONE_PAINT, 80), line);
 
   const prompt = "please ultrathink the plan";
   const styled = decorateKeywordLine(

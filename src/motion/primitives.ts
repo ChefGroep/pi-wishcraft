@@ -79,7 +79,7 @@ function band(i: number, head: number, width: number): number {
 }
 
 function colorForStyle(
-  style: Exclude<MotionStyleId, "none">,
+  style: MotionStyleId,
   i: number,
   count: number,
   now: number,
@@ -127,8 +127,8 @@ function colorForStyle(
       return lerpRgb([88, 88, 108], [232, 221, 255], breathe * amp);
     }
     default: {
-      const exhaustive: never = style;
-      throw new Error(`unhandled motion style: ${exhaustive}`);
+      const _exhaustive: never = style;
+      return _exhaustive;
     }
   }
 }
@@ -142,12 +142,11 @@ export function applyMotionStyle(
   intensity: MotionIntensity,
   now: number,
 ): string {
-  if (style === "none" || text.length === 0) return text;
+  if (text.length === 0) return text;
   const chars = visibleChars(text);
   if (chars.length === 0) return text;
   let out = "";
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i]!;
+  for (const [i, ch] of chars.entries()) {
     if (ch === " ") {
       out += ch;
       continue;
@@ -171,14 +170,13 @@ export function applyKeywordSpan(
   intensity: MotionIntensity,
   now: number,
 ): string {
-  if (style === "none" || length <= 0) return text;
+  if (length <= 0) return text;
   const chars = visibleChars(text);
   const from = Math.max(0, start);
   const to = Math.min(chars.length, start + length);
   if (from >= to) return text;
   let out = "";
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i]!;
+  for (const [i, ch] of chars.entries()) {
     if (i >= from && i < to && ch !== " ") {
       const [r, g, b] = colorForStyle(style, i - from, to - from, now, intensity);
       out += `${fg(r, g, b)}${ch}`;

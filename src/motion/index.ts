@@ -1,6 +1,5 @@
 export type {
   KeywordHit,
-  MotionCatalogEntry,
   MotionIntensity,
   MotionPaint,
   MotionRuntime,
@@ -24,7 +23,13 @@ export {
   MOTION_CATALOG,
   MOTION_CATALOG_COUNT,
   getMotionCatalogEntry,
+  parseThinkingLevel,
   thinkingMotion,
+} from "./catalog.ts";
+export type {
+  MotionCatalogEntry,
+  MotionCatalogId,
+  ThinkingLevel,
 } from "./catalog.ts";
 export {
   NONE_PAINT,

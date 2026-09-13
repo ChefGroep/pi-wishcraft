@@ -1,14 +1,15 @@
 import type { KeywordHit, MotionIntensity, MotionStyleId } from "./types.ts";
+import type { MotionCatalogId } from "./catalog.ts";
 
 interface KeywordDef {
   id: string;
   pattern: string;
-  catalogId: string;
+  catalogId: MotionCatalogId;
   style: MotionStyleId;
   intensity: MotionIntensity;
 }
 
-const KEYWORDS: readonly KeywordDef[] = [
+const KEYWORDS = [
   { id: "ultrathink", pattern: "ultrathink", catalogId: "ultrathink", style: "rainbow", intensity: 5 },
   { id: "think-harder", pattern: "think harder", catalogId: "think-harder", style: "heat", intensity: 4 },
   { id: "think-hard", pattern: "think hard", catalogId: "think-hard", style: "ember", intensity: 3 },
@@ -44,7 +45,7 @@ const KEYWORDS: readonly KeywordDef[] = [
   { id: "wisp", pattern: "wisp", catalogId: "wisp", style: "pulse", intensity: 1 },
   { id: "hush", pattern: "hush", catalogId: "vigil-hush", style: "pulse", intensity: 1 },
   { id: "vigil", pattern: "vigil", catalogId: "vigil-hush", style: "pulse", intensity: 1 },
-];
+] as const satisfies readonly KeywordDef[];
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

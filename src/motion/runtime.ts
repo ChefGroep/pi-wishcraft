@@ -4,7 +4,7 @@
  */
 
 import { colorEnabled } from "../theme/colors.ts";
-import { thinkingMotion, getMotionCatalogEntry } from "./catalog.ts";
+import { thinkingMotion, getMotionCatalogEntry, parseThinkingLevel } from "./catalog.ts";
 import { matchKeyword } from "./keywords.ts";
 import { reducedMotionEnabled } from "./policy.ts";
 import { applyKeywordSpan, applyMotionStyle } from "./primitives.ts";
@@ -17,13 +17,7 @@ import type {
 } from "./types.ts";
 import { KEYWORD_BURST_MS, MOTION_TICK_MS } from "./types.ts";
 
-export const NONE_PAINT: MotionPaint = {
-  style: "none",
-  intensity: 1,
-  catalogId: "none",
-  keyword: null,
-  burst: false,
-};
+export const NONE_PAINT = { kind: "none" } as const satisfies MotionPaint;
 
 export interface ResolveMotionPaintInput {
   settings: MotionSettings;
@@ -37,7 +31,32 @@ export interface ResolveMotionPaintInput {
 }
 
 function bumpIntensity(intensity: MotionIntensity): MotionIntensity {
-  return (intensity < 5 ? intensity + 1 : 5) as MotionIntensity;
+  switch (intensity) {
+    case 1:
+      return 2;
+    case 2:
+      return 3;
+    case 3:
+      return 4;
+    case 4:
+    case 5:
+      return 5;
+    default: {
+      const _exhaustive: never = intensity;
+      return _exhaustive;
+    }
+  }
+}
+
+function catalogPaint(
+  entry: ReturnType<typeof getMotionCatalogEntry>,
+): MotionPaint {
+  return {
+    kind: "catalog",
+    style: entry.style,
+    intensity: entry.intensity,
+    catalogId: entry.id,
+  };
 }
 
 /**
@@ -54,6 +73,7 @@ export function resolveMotionPaint(input: ResolveMotionPaintInput): MotionPaint 
   if (input.settings.keywords && input.keyword) {
     const burst = input.now < input.burstUntil;
     return {
+      kind: "keyword",
       style: input.keyword.style,
       intensity: burst
         ? bumpIntensity(input.keyword.intensity)
@@ -65,28 +85,10 @@ export function resolveMotionPaint(input: ResolveMotionPaintInput): MotionPaint 
   }
 
   if (input.streaming) {
-    const thinking = input.thinkingLevel
-      ? thinkingMotion(input.thinkingLevel)
-      : null;
-    if (thinking) {
-      return {
-        style: thinking.style,
-        intensity: thinking.intensity,
-        catalogId: thinking.id,
-        keyword: null,
-        burst: false,
-      };
-    }
-    const work = getMotionCatalogEntry("shimmer-work");
-    if (work) {
-      return {
-        style: work.style,
-        intensity: work.intensity,
-        catalogId: work.id,
-        keyword: null,
-        burst: false,
-      };
-    }
+    const thinking = parseThinkingLevel(input.thinkingLevel);
+    const entry = thinking ? thinkingMotion(thinking) : null;
+    if (entry) return catalogPaint(entry);
+    return catalogPaint(getMotionCatalogEntry("shimmer-work"));
   }
 
   return NONE_PAINT;
@@ -97,7 +99,7 @@ export function decoratePowerlineLine(
   paint: MotionPaint,
   now: number,
 ): string {
-  if (!text || paint.style === "none") return text;
+  if (!text || paint.kind === "none") return text;
   return applyMotionStyle(text, paint.style, paint.intensity, now);
 }
 

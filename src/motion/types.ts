@@ -1,10 +1,12 @@
 /**
  * Shared motion vocabulary. Styles are color-only overlays so powerline
  * layout width stays stable across frames.
+ *
+ * Paint is a sum type: idle cannot carry a style, and burst cannot exist
+ * without a keyword hit.
  */
 
 export type MotionStyleId =
-  | "none"
   | "shimmer"
   | "rainbow"
   | "ember"
@@ -32,13 +34,22 @@ export interface KeywordHit {
   length: number;
 }
 
-export interface MotionPaint {
-  style: MotionStyleId;
-  intensity: MotionIntensity;
-  catalogId: string;
-  keyword: KeywordHit | null;
-  burst: boolean;
-}
+export type MotionPaint =
+  | { kind: "none" }
+  | {
+      kind: "keyword";
+      style: MotionStyleId;
+      intensity: MotionIntensity;
+      catalogId: string;
+      keyword: KeywordHit;
+      burst: boolean;
+    }
+  | {
+      kind: "catalog";
+      style: MotionStyleId;
+      intensity: MotionIntensity;
+      catalogId: string;
+    };
 
 export interface MotionRuntime {
   noteText(text: string): void;
@@ -47,15 +58,6 @@ export interface MotionRuntime {
   getPaint(now?: number): MotionPaint;
   arm(): void;
   reset(): void;
-}
-
-export interface MotionCatalogEntry {
-  id: string;
-  name: string;
-  style: MotionStyleId;
-  intensity: MotionIntensity;
-  speed: number;
-  description: string;
 }
 
 export const MOTION_TICK_MS = 50;
