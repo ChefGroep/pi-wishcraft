@@ -143,17 +143,9 @@ export function setupWelcomeOverlay(rt: RuntimeState, ctx: any) {
 
           interval = setInterval(() => {
             if (dismissed) return;
-            if (animateLantern) {
-              motionElapsed += tickMs;
-              if (motionElapsed >= WELCOME_COUNTDOWN_MS) {
-                motionElapsed -= WELCOME_COUNTDOWN_MS;
-                countdown--;
-                welcome.setCountdown(countdown);
-              }
-            } else {
-              countdown--;
-              welcome.setCountdown(countdown);
-            }
+            motionElapsed += tickMs;
+            countdown = 30 - Math.floor(motionElapsed / WELCOME_COUNTDOWN_MS);
+            welcome.setCountdown(countdown);
             tui.requestRender();
             if (countdown <= 0) dismiss();
           }, tickMs);

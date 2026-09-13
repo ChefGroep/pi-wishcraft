@@ -42,10 +42,7 @@ export function parseMotionSettings(wishcraftSettings: unknown): MotionSettings 
 export function motionPaintAllowed(
   settings: MotionSettings,
   env: NodeJS.ProcessEnv = process.env,
+  color: boolean = colorEnabled(),
 ): boolean {
-  return (
-    settings.enabled &&
-    !reducedMotionEnabled(env) &&
-    colorEnabled()
-  );
+  return settings.enabled && !reducedMotionEnabled(env) && color;
 }

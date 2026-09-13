@@ -245,7 +245,6 @@ function liveReloadFromSettings(
   }
   if (item.path.startsWith("wishcraft.motion")) {
     rt.motion.setSettings(parseMotionSettings(settings.wishcraft));
-    rt.motion.arm();
     rt.tuiRef?.requestRender?.();
   }
 }

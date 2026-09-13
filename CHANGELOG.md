@@ -3,10 +3,15 @@
 ## [Unreleased]
 
 ### Added
-- Powerline/footer motion catalog (30 named styles) and ≥30 keyword triggers (`ultrathink`, `ultra`, `think harder`, `max`, …). Streaming shimmers the status bar; a matched keyword plays a short burst then holds the accent. `wishcraft.motion.enabled` / `wishcraft.motion.keywords` (default on) and `WISHCRAFT_REDUCED_MOTION` / `NO_COLOR` disable it.
+- Powerline/footer motion catalog (30 named styles) and ≥30 keyword triggers (`ultrathink`, `ultra`, `think harder`, `max`, …). Streaming shimmers the status bar; a matched keyword plays a short burst then holds the accent while the draft still contains the word. `wishcraft.motion.enabled` / `wishcraft.motion.keywords` (default on) and `WISHCRAFT_REDUCED_MOTION` / `NO_COLOR` disable it.
 
 ### Improved
 - Welcome overlay shows the Kongming lantern again, with a spatial flame flicker (~10 fps). `wishcraft.welcome.animateLantern` (default on) and `WISHCRAFT_REDUCED_MOTION` control motion. The header, `NO_COLOR`, and reduced-motion stays stay still.
+- Named motion looks use catalog speed and nine distinct geometries (traveling gold, hue chase, ember trail, heat bloom, aurora wash, comet tail, prism split, tide, pulse) instead of one intensity curve.
+
+### Fixed
+- Keyword motion no longer keeps the idle status bar lit after submit. Hold is draft-only; the last-prompt row still colors the matched word.
+- Keyword span indexes are Unicode code points, so a trigger after an emoji paints the right slice.
 
 ## [1.1.1] - 2026-09-12
 

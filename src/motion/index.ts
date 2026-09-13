@@ -6,7 +6,7 @@ export type {
   MotionSettings,
   MotionStyleId,
 } from "./types.ts";
-export { KEYWORD_BURST_MS, MOTION_TICK_MS } from "./types.ts";
+export { KEYWORD_BURST_MS, KEYWORD_BURST_SPEED, MOTION_TICK_MS } from "./types.ts";
 export {
   motionPaintAllowed,
   parseMotionSettings,
@@ -23,6 +23,7 @@ export {
   MOTION_CATALOG,
   MOTION_CATALOG_COUNT,
   getMotionCatalogEntry,
+  isMotionCatalogId,
   parseThinkingLevel,
   thinkingMotion,
 } from "./catalog.ts";

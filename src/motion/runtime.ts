@@ -4,9 +4,15 @@
  */
 
 import { colorEnabled } from "../theme/colors.ts";
-import { thinkingMotion, getMotionCatalogEntry, parseThinkingLevel } from "./catalog.ts";
+import {
+  getMotionCatalogEntry,
+  isMotionCatalogId,
+  parseThinkingLevel,
+  thinkingMotion,
+  type MotionCatalogEntry,
+} from "./catalog.ts";
 import { matchKeyword } from "./keywords.ts";
-import { reducedMotionEnabled } from "./policy.ts";
+import { motionPaintAllowed } from "./policy.ts";
 import { applyKeywordSpan, applyMotionStyle } from "./primitives.ts";
 import type {
   MotionIntensity,
@@ -15,7 +21,7 @@ import type {
   MotionSettings,
   KeywordHit,
 } from "./types.ts";
-import { KEYWORD_BURST_MS, MOTION_TICK_MS } from "./types.ts";
+import { KEYWORD_BURST_MS, KEYWORD_BURST_SPEED, MOTION_TICK_MS } from "./types.ts";
 
 export const NONE_PAINT = { kind: "none" } as const satisfies MotionPaint;
 
@@ -48,13 +54,17 @@ function bumpIntensity(intensity: MotionIntensity): MotionIntensity {
   }
 }
 
-function catalogPaint(
-  entry: ReturnType<typeof getMotionCatalogEntry>,
-): MotionPaint {
+function catalogFromId(id: string): MotionCatalogEntry {
+  if (isMotionCatalogId(id)) return getMotionCatalogEntry(id);
+  return getMotionCatalogEntry("shimmer-work");
+}
+
+function catalogPaint(entry: MotionCatalogEntry): MotionPaint {
   return {
     kind: "catalog",
     style: entry.style,
     intensity: entry.intensity,
+    speed: entry.speed,
     catalogId: entry.id,
   };
 }
@@ -66,19 +76,19 @@ function catalogPaint(
 export function resolveMotionPaint(input: ResolveMotionPaintInput): MotionPaint {
   const env = input.env ?? process.env;
   const color = input.color ?? colorEnabled();
-  if (!input.settings.enabled || reducedMotionEnabled(env) || !color) {
+  if (!motionPaintAllowed(input.settings, env, color)) {
     return NONE_PAINT;
   }
 
   if (input.settings.keywords && input.keyword) {
+    const entry = catalogFromId(input.keyword.catalogId);
     const burst = input.now < input.burstUntil;
     return {
       kind: "keyword",
-      style: input.keyword.style,
-      intensity: burst
-        ? bumpIntensity(input.keyword.intensity)
-        : input.keyword.intensity,
-      catalogId: input.keyword.catalogId,
+      style: entry.style,
+      intensity: burst ? bumpIntensity(entry.intensity) : entry.intensity,
+      speed: burst ? entry.speed * KEYWORD_BURST_SPEED : entry.speed,
+      catalogId: entry.id,
       keyword: input.keyword,
       burst,
     };
@@ -100,7 +110,7 @@ export function decoratePowerlineLine(
   now: number,
 ): string {
   if (!text || paint.kind === "none") return text;
-  return applyMotionStyle(text, paint.style, paint.intensity, now);
+  return applyMotionStyle(text, paint.style, paint.intensity, now, paint.speed);
 }
 
 export function decorateKeywordLine(
@@ -108,20 +118,25 @@ export function decorateKeywordLine(
   settings: MotionSettings,
   now: number,
   env?: NodeJS.ProcessEnv,
-  color?: boolean,
+  color?: boolean;
 ): string {
   if (!text) return text;
-  if (!settings.enabled || !settings.keywords) return text;
-  if (reducedMotionEnabled(env) || !(color ?? colorEnabled())) return text;
+  const envOf = env ?? process.env;
+  const colorOn = color ?? colorEnabled();
+  if (!motionPaintAllowed(settings, envOf, colorOn) || !settings.keywords) {
+    return text;
+  }
   const hit = matchKeyword(text);
   if (!hit) return text;
+  const entry = catalogFromId(hit.catalogId);
   return applyKeywordSpan(
     text,
     hit.index,
     hit.length,
-    hit.style,
-    hit.intensity,
+    entry.style,
+    entry.intensity,
     now,
+    entry.speed,
   );
 }
 
@@ -152,15 +167,21 @@ export function createMotionRuntime(
     timer = null;
   }
 
+  function snapshot(now: number): MotionPaint {
+    return resolveMotionPaint({
+      settings,
+      streaming: opts.getStreaming(),
+      thinkingLevel: opts.getThinkingLevel(),
+      keyword,
+      burstUntil,
+      now,
+      env: envOf(),
+      color: colorOn(),
+    });
+  }
+
   function shouldTick(now: number): boolean {
-    if (!settings.enabled || reducedMotionEnabled(envOf()) || !colorOn()) {
-      return false;
-    }
-    if (opts.getStreaming()) return true;
-    if (settings.keywords && (keyword !== null || now < burstUntil)) {
-      return true;
-    }
-    return false;
+    return snapshot(now).kind !== "none";
   }
 
   function schedule(): void {
@@ -215,16 +236,7 @@ export function createMotionRuntime(
       return { enabled: settings.enabled, keywords: settings.keywords };
     },
     getPaint(now = clock()) {
-      return resolveMotionPaint({
-        settings,
-        streaming: opts.getStreaming(),
-        thinkingLevel: opts.getThinkingLevel(),
-        keyword,
-        burstUntil,
-        now,
-        env: envOf(),
-        color: colorOn(),
-      });
+      return snapshot(now);
     },
     arm() {
       syncTimer();

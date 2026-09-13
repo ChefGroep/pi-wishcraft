@@ -14,7 +14,7 @@ import {
   applyMotionStyle,
   stripMotionAnsi,
 } from "../src/motion/primitives.ts";
-import { KEYWORD_BURST_MS } from "../src/motion/types.ts";
+import { KEYWORD_BURST_MS, KEYWORD_BURST_SPEED } from "../src/motion/types.ts";
 import { parseMotionSettings } from "../src/motion/policy.ts";
 import {
   NONE_PAINT,
@@ -58,6 +58,52 @@ test("keyword matching is longest-first and word-boundary", () => {
   assert.equal(matchKeyword("ULTRATHINK")?.pattern, "ultrathink");
 });
 
+test("keyword span indexes are Unicode code points", () => {
+  const text = "please 👍 ultrathink now";
+  const hit = matchKeyword(text);
+  assert.ok(hit);
+  assert.equal(
+    [...text].slice(hit.index, hit.index + hit.length).join(""),
+    "ultrathink",
+  );
+});
+
+test("keyword looks come from the catalog, not a duplicate style bag", () => {
+  const rune = matchKeyword("cast a rune here");
+  assert.ok(rune);
+  assert.equal(rune.catalogId, "rune-flare");
+  const paint = resolveMotionPaint({
+    settings: { enabled: true, keywords: true },
+    streaming: false,
+    thinkingLevel: null,
+    keyword: rune,
+    burstUntil: 0,
+    now: 5000,
+    color: true,
+  });
+  assert.equal(paint.kind, "keyword");
+  assert.equal(paint.style, "heat");
+  assert.equal(paint.intensity, 3);
+  assert.equal(paint.speed, getMotionCatalogEntry("rune-flare").speed);
+  assert.equal(paint.burst, false);
+
+  const xhigh = matchKeyword("go xhigh");
+  assert.ok(xhigh);
+  const xhighPaint = resolveMotionPaint({
+    settings: { enabled: true, keywords: true },
+    streaming: false,
+    thinkingLevel: null,
+    keyword: xhigh,
+    burstUntil: 0,
+    now: 5000,
+    color: true,
+  });
+  assert.equal(xhighPaint.kind, "keyword");
+  assert.equal(xhighPaint.style, "rainbow");
+  assert.equal(xhighPaint.intensity, 5);
+  assert.equal(xhighPaint.catalogId, "max-effort");
+});
+
 test("applyMotionStyle changes over time and keeps visible width", () => {
   const sample = "  Working · claude-sonnet  ";
   const t0 = applyMotionStyle(sample, "rainbow", 5, 0);
@@ -68,6 +114,31 @@ test("applyMotionStyle changes over time and keeps visible width", () => {
   assert.equal(visibleWidth(t0), visibleWidth(sample));
   assert.equal(visibleWidth(t1), visibleWidth(sample));
   assert.equal(stripMotionAnsi(t0), stripMotionAnsi(sample).replace(/\x1b\[[0-9;]*m/g, ""));
+});
+
+test("catalog speed changes the frame at the same intensity and time", () => {
+  const sample = "  Working · claude-sonnet  ";
+  const slow = applyMotionStyle(sample, "shimmer", 3, 240, 0.45);
+  const fast = applyMotionStyle(sample, "shimmer", 3, 240, 2.1);
+  assert.notEqual(slow, fast);
+  assert.equal(visibleWidth(slow), visibleWidth(fast));
+});
+
+test("nine paint styles produce distinct frames", () => {
+  const sample = "status · model · git · cost";
+  const styles = [
+    "shimmer",
+    "rainbow",
+    "ember",
+    "heat",
+    "aurora",
+    "comet",
+    "prism",
+    "tide",
+    "pulse",
+  ] as const;
+  const frames = styles.map((style) => applyMotionStyle(sample, style, 4, 320, 1.2));
+  assert.equal(new Set(frames).size, styles.length);
 });
 
 test("resolveMotionPaint priority is keyword, then thinking, then streaming shimmer", () => {
@@ -98,6 +169,7 @@ test("resolveMotionPaint priority is keyword, then thinking, then streaming shim
   assert.equal(burst.style, "rainbow");
   assert.equal(burst.burst, true);
   assert.equal(burst.catalogId, "ultrathink");
+  assert.equal(burst.speed, getMotionCatalogEntry("ultrathink").speed * KEYWORD_BURST_SPEED);
 
   const hold = resolveMotionPaint({
     settings: { enabled: true, keywords: true },
@@ -218,6 +290,9 @@ test("motion runtime bursts then holds a keyword and idles without one", () => {
     assert.equal(hold.kind, "keyword");
     assert.equal(hold.style, "rainbow");
     assert.equal(hold.burst, false);
+
+    runtime.noteText("");
+    assert.equal(runtime.getPaint().kind, "none");
 
     runtime.noteText("plain question");
     assert.equal(runtime.getPaint().kind, "none");

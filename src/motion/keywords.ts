@@ -1,50 +1,49 @@
-import type { KeywordHit, MotionIntensity, MotionStyleId } from "./types.ts";
 import type { MotionCatalogId } from "./catalog.ts";
+import { stripMotionAnsi } from "./primitives.ts";
+import type { KeywordHit } from "./types.ts";
 
 interface KeywordDef {
   id: string;
   pattern: string;
   catalogId: MotionCatalogId;
-  style: MotionStyleId;
-  intensity: MotionIntensity;
 }
 
 const KEYWORDS = [
-  { id: "ultrathink", pattern: "ultrathink", catalogId: "ultrathink", style: "rainbow", intensity: 5 },
-  { id: "think-harder", pattern: "think harder", catalogId: "think-harder", style: "heat", intensity: 4 },
-  { id: "think-hard", pattern: "think hard", catalogId: "think-hard", style: "ember", intensity: 3 },
-  { id: "lanternwake", pattern: "lanternwake", catalogId: "lanternwake", style: "ember", intensity: 4 },
-  { id: "kongming", pattern: "kongming", catalogId: "ember-relay", style: "ember", intensity: 4 },
-  { id: "wishcraft", pattern: "wishcraft", catalogId: "wish-rise", style: "ember", intensity: 3 },
-  { id: "crucible", pattern: "crucible", catalogId: "forge-heat", style: "heat", intensity: 5 },
-  { id: "ultrathink-alias-ultra", pattern: "ultra", catalogId: "rainbow-ultra", style: "rainbow", intensity: 5 },
-  { id: "xhigh", pattern: "xhigh", catalogId: "max-effort", style: "rainbow", intensity: 4 },
-  { id: "zenith", pattern: "zenith", catalogId: "zenith", style: "rainbow", intensity: 4 },
-  { id: "nova", pattern: "nova", catalogId: "nova-burst", style: "rainbow", intensity: 5 },
-  { id: "aurora", pattern: "aurora", catalogId: "aurora-nimbus", style: "aurora", intensity: 4 },
-  { id: "nimbus", pattern: "nimbus", catalogId: "aurora-nimbus", style: "aurora", intensity: 3 },
-  { id: "comet", pattern: "comet", catalogId: "comet-tail", style: "comet", intensity: 4 },
-  { id: "storm", pattern: "storm", catalogId: "storm-front", style: "comet", intensity: 4 },
-  { id: "blaze", pattern: "blaze", catalogId: "forge-heat", style: "heat", intensity: 4 },
-  { id: "flare", pattern: "flare", catalogId: "rune-flare", style: "heat", intensity: 4 },
-  { id: "forge", pattern: "forge", catalogId: "forge-heat", style: "heat", intensity: 4 },
-  { id: "warp", pattern: "warp", catalogId: "warp-fold", style: "prism", intensity: 4 },
-  { id: "prism", pattern: "prism", catalogId: "prism-split", style: "prism", intensity: 3 },
-  { id: "helix", pattern: "helix", catalogId: "helix-spin", style: "prism", intensity: 3 },
-  { id: "lantern", pattern: "lantern", catalogId: "lanternwake", style: "ember", intensity: 3 },
-  { id: "ember", pattern: "ember", catalogId: "ember-gust", style: "ember", intensity: 3 },
-  { id: "tide", pattern: "tide", catalogId: "tide-rise", style: "tide", intensity: 3 },
-  { id: "orbit", pattern: "orbit", catalogId: "cyan-drift", style: "aurora", intensity: 2 },
-  { id: "spark", pattern: "spark", catalogId: "comet-tail", style: "comet", intensity: 3 },
-  { id: "stitch", pattern: "stitch", catalogId: "stitch-travel", style: "shimmer", intensity: 2 },
-  { id: "bloom", pattern: "bloom", catalogId: "pulse-quiet", style: "pulse", intensity: 2 },
-  { id: "rune", pattern: "rune", catalogId: "rune-flare", style: "pulse", intensity: 2 },
-  { id: "wish", pattern: "wish", catalogId: "wish-rise", style: "ember", intensity: 2 },
-  { id: "think", pattern: "think", catalogId: "shimmer-work", style: "shimmer", intensity: 2 },
-  { id: "max", pattern: "max", catalogId: "max-effort", style: "rainbow", intensity: 5 },
-  { id: "wisp", pattern: "wisp", catalogId: "wisp", style: "pulse", intensity: 1 },
-  { id: "hush", pattern: "hush", catalogId: "vigil-hush", style: "pulse", intensity: 1 },
-  { id: "vigil", pattern: "vigil", catalogId: "vigil-hush", style: "pulse", intensity: 1 },
+  { id: "ultrathink", pattern: "ultrathink", catalogId: "ultrathink" },
+  { id: "think-harder", pattern: "think harder", catalogId: "think-harder" },
+  { id: "think-hard", pattern: "think hard", catalogId: "think-hard" },
+  { id: "lanternwake", pattern: "lanternwake", catalogId: "lanternwake" },
+  { id: "kongming", pattern: "kongming", catalogId: "ember-relay" },
+  { id: "wishcraft", pattern: "wishcraft", catalogId: "wish-rise" },
+  { id: "crucible", pattern: "crucible", catalogId: "forge-heat" },
+  { id: "ultrathink-alias-ultra", pattern: "ultra", catalogId: "rainbow-ultra" },
+  { id: "xhigh", pattern: "xhigh", catalogId: "max-effort" },
+  { id: "zenith", pattern: "zenith", catalogId: "zenith" },
+  { id: "nova", pattern: "nova", catalogId: "nova-burst" },
+  { id: "aurora", pattern: "aurora", catalogId: "aurora-nimbus" },
+  { id: "nimbus", pattern: "nimbus", catalogId: "aurora-nimbus" },
+  { id: "comet", pattern: "comet", catalogId: "comet-tail" },
+  { id: "storm", pattern: "storm", catalogId: "storm-front" },
+  { id: "blaze", pattern: "blaze", catalogId: "forge-heat" },
+  { id: "flare", pattern: "flare", catalogId: "rune-flare" },
+  { id: "forge", pattern: "forge", catalogId: "forge-heat" },
+  { id: "warp", pattern: "warp", catalogId: "warp-fold" },
+  { id: "prism", pattern: "prism", catalogId: "prism-split" },
+  { id: "helix", pattern: "helix", catalogId: "helix-spin" },
+  { id: "lantern", pattern: "lantern", catalogId: "lanternwake" },
+  { id: "ember", pattern: "ember", catalogId: "ember-gust" },
+  { id: "tide", pattern: "tide", catalogId: "tide-rise" },
+  { id: "orbit", pattern: "orbit", catalogId: "cyan-drift" },
+  { id: "spark", pattern: "spark", catalogId: "comet-tail" },
+  { id: "stitch", pattern: "stitch", catalogId: "stitch-travel" },
+  { id: "bloom", pattern: "bloom", catalogId: "pulse-quiet" },
+  { id: "rune", pattern: "rune", catalogId: "rune-flare" },
+  { id: "wish", pattern: "wish", catalogId: "wish-rise" },
+  { id: "think", pattern: "think", catalogId: "shimmer-work" },
+  { id: "max", pattern: "max", catalogId: "max-effort" },
+  { id: "wisp", pattern: "wisp", catalogId: "wisp" },
+  { id: "hush", pattern: "hush", catalogId: "vigil-hush" },
+  { id: "vigil", pattern: "vigil", catalogId: "vigil-hush" },
 ] as const satisfies readonly KeywordDef[];
 
 function escapeRegExp(value: string): string {
@@ -60,19 +59,22 @@ const COMPILED: ReadonlyArray<KeywordDef & { re: RegExp }> = SORTED.map((def) =>
 
 export const KEYWORD_COUNT = KEYWORDS.length;
 
+function codePointIndex(text: string, utf16Index: number): number {
+  return [...text.slice(0, utf16Index)].length;
+}
+
 export function matchKeyword(text: string): KeywordHit | null {
-  if (!text) return null;
+  const plain = stripMotionAnsi(text);
+  if (!plain) return null;
   for (const def of COMPILED) {
-    const match = def.re.exec(text);
+    const match = def.re.exec(plain);
     if (!match) continue;
     return {
       id: def.id,
       pattern: def.pattern,
       catalogId: def.catalogId,
-      style: def.style,
-      intensity: def.intensity,
-      index: match.index,
-      length: match[0].length,
+      index: codePointIndex(plain, match.index),
+      length: [...match[0]].length,
     };
   }
   return null;

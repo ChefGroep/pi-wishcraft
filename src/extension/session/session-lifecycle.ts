@@ -241,6 +241,7 @@ export function registerSessionLifecycle(
     rt.welcomeOverlayShouldDismiss = false;
     rt.welcomeDismissScheduler.cancel();
     rt.statusRenderScheduler.cancel();
+    rt.isStreaming = false;
     rt.motion.reset();
     rt.restoreFooterStatusRepaintHook?.();
     rt.restoreFooterStatusRepaintHook = null;
@@ -312,7 +313,6 @@ export function registerSessionLifecycle(
   // Generate themed working message before agent starts (has access to user's prompt)
   pi.on("before_agent_start", async (event, ctx) => {
     rt.lastUserPrompt = event.prompt;
-    rt.motion.noteText(event.prompt);
     if (ctx.hasUI) {
       onVibeBeforeAgentStart(event.prompt, ctx.ui.setWorkingMessage);
     }
