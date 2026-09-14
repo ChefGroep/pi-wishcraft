@@ -17,20 +17,19 @@ export function centerText(text: string, width: number): string {
 
 export function getBoxLayout(termWidth: number) {
   const minLayoutWidth = 44;
-  
   if (termWidth < minLayoutWidth) {
     return null;
   }
-  
+
   const minWidth = 76;
   const maxWidth = 96;
   const boxWidth = Math.min(
     termWidth,
-    Math.max(minWidth, Math.min(termWidth - 2, maxWidth))
+    Math.max(minWidth, Math.min(termWidth - 2, maxWidth)),
   );
-  
+
   const leftCol = 26;
   const rightCol = Math.max(1, boxWidth - leftCol - 3);
-  
+
   return { boxWidth, leftCol, rightCol };
 }

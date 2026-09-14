@@ -284,3 +284,9 @@ test("session modules stay under the 450-line split note", () => {
     assert.ok(lines <= limit, `${name} is ${lines} lines (limit ${limit})`);
   }
 });
+
+test("config overlay toggle notify follows the value that was written", () => {
+  assert.match(wishcraftOverlaySource, /const next = nextToggleValue\(item, cur\)/);
+  assert.match(wishcraftOverlaySource, /next \? "on" : "off"/);
+  assert.doesNotMatch(wishcraftOverlaySource, /!\(cur === true\)/);
+});

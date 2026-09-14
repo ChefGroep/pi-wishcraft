@@ -1,51 +1,19 @@
-import type { Component } from "@earendil-works/pi-tui";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth, type Component } from "@earendil-works/pi-tui";
+import { getBoxLayout } from "./layout.ts";
 import { dim, renderWelcomeBox } from "./renderer.ts";
 import type { WelcomeData } from "./types.ts";
-import type { LoadedCounts, RecentSession } from "./types.ts";
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Welcome Components
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Welcome overlay component for pi agent.
- * Displays a branded splash screen with the Kongming lantern, tips, and loaded counts.
+ * Welcome overlay: lantern, tips, loaded counts, and a countdown footer.
  */
 export class WelcomeComponent implements Component {
   private data: WelcomeData;
   private countdown: number = 30;
   private animateLantern: boolean;
 
-  constructor(
-    modelName: string,
-    providerName: string,
-    recentSessions: RecentSession[] = [],
-    loadedCounts: LoadedCounts = {
-      contextFiles: 0,
-      extensions: 0,
-      skills: 0,
-      promptTemplates: 0,
-    },
-    initialContextTokens: number | null = null,
-    queueCount?: number,
-    hasStash?: boolean,
-    whatsNew?: string[],
-    nextIdeaText?: string,
-    animateLantern = false,
-  ) {
+  constructor(data: WelcomeData, animateLantern = false) {
+    this.data = data;
     this.animateLantern = animateLantern;
-    this.data = {
-      modelName,
-      providerName,
-      recentSessions,
-      loadedCounts,
-      initialContextTokens,
-      queueCount,
-      hasStash,
-      whatsNew,
-      nextIdeaText,
-    };
   }
 
   setCountdown(seconds: number): void {
@@ -56,24 +24,12 @@ export class WelcomeComponent implements Component {
   invalidate(): void {}
 
   render(termWidth: number): string[] {
-    // Minimum width for two-column layout (must match renderWelcomeBox)
-    const minLayoutWidth = 44;
-    if (termWidth < minLayoutWidth) {
-      return [];
-    }
+    const layout = getBoxLayout(termWidth);
+    if (!layout) return [];
 
-    const minWidth = 76;
-    const maxWidth = 96;
-    // Clamp to termWidth to prevent crash on narrow terminals
-    const boxWidth = Math.min(
-      termWidth,
-      Math.max(minWidth, Math.min(termWidth - 2, maxWidth)),
-    );
-
-    // Bottom line with countdown
     const countdownText = ` Press any key to continue (${this.countdown}s) `;
     const countdownStyled = dim(countdownText);
-    const bottomContentWidth = boxWidth - 2;
+    const bottomContentWidth = layout.boxWidth - 2;
     const countdownVisLen = visibleWidth(countdownText);
     const leftPad = Math.floor((bottomContentWidth - countdownVisLen) / 2);
     const rightPad = bottomContentWidth - countdownVisLen - leftPad;
