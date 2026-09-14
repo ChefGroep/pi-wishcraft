@@ -1,0 +1,42 @@
+export type {
+  KeywordHit,
+  MotionIntensity,
+  MotionPaint,
+  MotionRuntime,
+  MotionSettings,
+  MotionStyleId,
+} from "./types.ts";
+export { KEYWORD_BURST_MS, KEYWORD_BURST_SPEED, MOTION_TICK_MS } from "./types.ts";
+export {
+  motionPaintAllowed,
+  parseMotionSettings,
+  reducedMotionEnabled,
+} from "./policy.ts";
+export {
+  applyKeywordSpan,
+  applyMotionStyle,
+  stripMotionAnsi,
+  visibleChars,
+} from "./primitives.ts";
+export { KEYWORD_COUNT, keywordCatalog, matchKeyword } from "./keywords.ts";
+export {
+  MOTION_CATALOG,
+  MOTION_CATALOG_COUNT,
+  getMotionCatalogEntry,
+  isMotionCatalogId,
+  parseThinkingLevel,
+  thinkingMotion,
+} from "./catalog.ts";
+export type {
+  MotionCatalogEntry,
+  MotionCatalogId,
+  ThinkingLevel,
+} from "./catalog.ts";
+export {
+  NONE_PAINT,
+  createMotionRuntime,
+  decorateKeywordLine,
+  decoratePowerlineLine,
+  resolveMotionPaint,
+} from "./runtime.ts";
+export type { MotionRuntimeOptions, ResolveMotionPaintInput } from "./runtime.ts";

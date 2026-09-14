@@ -100,24 +100,32 @@ test("welcome renders the initial system prompt token estimate", () => {
     skills: 1,
     promptTemplates: 1,
   };
-  const rendered = new WelcomeHeader("Model", "Provider", [], counts, 1900)
+  const headerData = (initialContextTokens: number | null) => ({
+    modelName: "Model",
+    providerName: "Provider",
+    recentSessions: [],
+    loadedCounts: counts,
+    initialContextTokens,
+  });
+  const rendered = new WelcomeHeader(headerData(1900))
     .render(96)
     .join("\n")
     .replace(/\x1b\[[0-9;]*m/g, "");
-  const withoutEstimate = [undefined, 0, Number.NaN].map((tokens) =>
-    new WelcomeHeader("Model", "Provider", [], counts, tokens)
+  const withoutEstimate = [null, 0, Number.NaN].map((tokens) =>
+    new WelcomeHeader(headerData(tokens))
       .render(96)
       .join("\n")
       .replace(/\x1b\[[0-9;]*m/g, ""),
   );
 
   assert.match(rendered, /≈ 1\.9k initial prompt tokens/);
+  assert.match(rendered, /▀/);
   for (const output of withoutEstimate) {
     assert.doesNotMatch(output, /initial prompt tokens/);
   }
   assert.match(
     indexSource,
-    /new WelcomeHeader\(\s*modelName,\s*providerName,\s*recentSessions,\s*loadedCounts,\s*initialContextTokens,\s*queueCount,\s*hasStash,\s*whatsNew,\s*nextIdeaText,\s*\)/,
+    /new WelcomeHeader\(\s*readWelcomeData\(rt, ctx\)\s*\)/,
   );
 
   const overlayStart = indexSource.indexOf("export function setupWelcomeOverlay(");
@@ -126,10 +134,7 @@ test("welcome renders the initial system prompt token estimate", () => {
     "if (hasActivity) {",
     delayStart,
   );
-  const estimateStart = indexSource.indexOf(
-    "const initialContextTokens = estimateInitialContextTokens(ctx);",
-    overlayStart,
-  );
+  const dataStart = indexSource.indexOf("readWelcomeData(rt, ctx)", overlayStart);
   const componentStart = indexSource.indexOf(
     "new WelcomeComponent(",
     overlayStart,
@@ -137,8 +142,13 @@ test("welcome renders the initial system prompt token estimate", () => {
   assert.ok(overlayStart >= 0);
   assert.ok(delayStart > overlayStart);
   assert.ok(activityGuardStart > delayStart);
-  assert.ok(estimateStart > activityGuardStart);
-  assert.ok(componentStart > estimateStart);
+  assert.ok(dataStart > activityGuardStart);
+  assert.ok(componentStart > dataStart);
+  assert.match(indexSource, /lanternAnimationEnabled\(/);
+  assert.match(
+    indexSource,
+    /new WelcomeComponent\(\s*data,\s*animateLantern\s*\)/,
+  );
 });
 
 test("getRecentSessions prefers cwd basename from session header", () => {

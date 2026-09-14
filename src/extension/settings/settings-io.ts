@@ -11,11 +11,10 @@ import {
   nextPowerlineSettingWithOptions,
   nextPowerlineSettingWithPreset,
 } from "../../config/powerline-config.ts";
+import { isRecord } from "../../config/primitives.ts";
 import { getAgentPath } from "../../paths/agent-dirs.ts";
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+export { isRecord };
 
 export function getSettingsPath(): string {
   return getAgentPath("settings.json");

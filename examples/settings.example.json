@@ -29,6 +29,10 @@
     "welcome": {
       "animateLantern": true
     },
+    "motion": {
+      "enabled": true,
+      "keywords": true
+    },
     "tokenBudget": {
       "daily": 0
     },

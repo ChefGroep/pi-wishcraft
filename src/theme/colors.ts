@@ -12,6 +12,10 @@ export const ansi: AnsiColors = {
   reset: "\x1b[0m",
 };
 
+export function clampByte(n: number): number {
+  return Math.max(0, Math.min(255, Math.round(n)));
+}
+
 // ponytail: NO_COLOR (de-facto standard — present and non-empty) disables all
 // wishcraft color so the status bar stays plain text in no-color terminals
 // and color-blind pipelines. Computed lazily so test env changes take effect.

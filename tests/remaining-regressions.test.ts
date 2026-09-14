@@ -15,6 +15,18 @@ const source = readFileSync(
   new URL("../src/extension/session/session-lifecycle.ts", import.meta.url),
   "utf-8",
 );
+const agentTurnSource = readFileSync(
+  new URL("../src/extension/session/agent-turn.ts", import.meta.url),
+  "utf-8",
+);
+const wishcraftConfigSource = readFileSync(
+  new URL("../src/extension/settings/wishcraft-config.ts", import.meta.url),
+  "utf-8",
+);
+const wishcraftOverlaySource = readFileSync(
+  new URL("../src/extension/settings/wishcraft-config-overlay.ts", import.meta.url),
+  "utf-8",
+);
 const originalNerdFonts = process.env.POWERLINE_NERD_FONTS;
 process.env.POWERLINE_NERD_FONTS = "0";
 
@@ -251,11 +263,30 @@ test("stale ctx guard handles old and new Pi messages on agent_end", () => {
     false,
   );
   assert.match(
-    source,
+    agentTurnSource,
     /let hasUI = false;\r?\n\s+try \{\r?\n\s+hasUI = Boolean\(ctx\.hasUI\);/,
   );
   assert.match(
-    source,
+    agentTurnSource,
     /if \(!isStaleExtensionContextError\(error\)\) throw error;\r?\n\s+rt\.currentCtx = null;\r?\n\s+return;/,
   );
+});
+
+test("session modules stay under the 450-line split note", () => {
+  const limit = 450;
+  for (const [name, text] of [
+    ["session-lifecycle.ts", source],
+    ["agent-turn.ts", agentTurnSource],
+    ["wishcraft-config.ts", wishcraftConfigSource],
+    ["wishcraft-config-overlay.ts", wishcraftOverlaySource],
+  ] as const) {
+    const lines = text.split("\n").length;
+    assert.ok(lines <= limit, `${name} is ${lines} lines (limit ${limit})`);
+  }
+});
+
+test("config overlay toggle notify follows the value that was written", () => {
+  assert.match(wishcraftOverlaySource, /const next = nextToggleValue\(item, cur\)/);
+  assert.match(wishcraftOverlaySource, /next \? "on" : "off"/);
+  assert.doesNotMatch(wishcraftOverlaySource, /!\(cur === true\)/);
 });

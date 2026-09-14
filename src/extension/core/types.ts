@@ -13,6 +13,7 @@ import type {
 import type { CoreContextUsageCache } from "../../usage/context.ts";
 import type { WelcomeDismissScheduler } from "../../welcome/auto-dismiss.ts";
 import type { RenderScheduler } from "../../render/timer.ts";
+import type { MotionRuntime } from "../../motion/types.ts";
 
 export type ShortcutBinding = string | null;
 
@@ -98,4 +99,5 @@ export interface RuntimeState {
 
   welcomeDismissScheduler: WelcomeDismissScheduler<any>;
   statusRenderScheduler: RenderScheduler;
+  motion: MotionRuntime;
 }

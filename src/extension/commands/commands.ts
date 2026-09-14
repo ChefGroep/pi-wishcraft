@@ -10,7 +10,7 @@ import { registerQueueCommands } from "./queue-commands.ts";
 import { runPowerlineDoctor } from "./powerline-doctor.ts";
 import { runPowerlineExport } from "./powerline-export.ts";
 import { registerSkillManagerCommand } from "../skills/skill-manager.ts";
-import { registerWishcraftConfigCommand } from "../settings/wishcraft-config.ts";
+import { registerWishcraftConfigCommand } from "../settings/wishcraft-config-overlay.ts";
 import { getRepairCounts } from "../hooks/index.ts";
 import {
   writePowerlineOptionSetting,

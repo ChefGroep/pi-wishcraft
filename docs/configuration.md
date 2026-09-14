@@ -222,6 +222,30 @@ Declarative policy rules (`wishcraft.policy`) live in the same global file. They
 
 Tool-input repairs apply to custom/extension tools only (`wishcraft.repairsEnabled`, default on). `/repairs` prints the counters.
 
+## Welcome lantern
+
+The startup overlay paints the Kongming lantern in the left column. Flame cells flicker at ~10 fps; paper and tassel stay almost still. The persistent header (`quietStartup: true`) always uses a still frame.
+
+Motion is on by default. Turn it off with `wishcraft.welcome.animateLantern: false`, or set `WISHCRAFT_REDUCED_MOTION` to a truthy value (`1`, `true`, `on`, `yes`). `NO_COLOR` keeps the silhouette and skips the flicker timer. Host `prefers-reduced-motion` is not detected.
+
+```json
+{
+  "wishcraft": {
+    "welcome": { "animateLantern": true },
+    "motion": { "enabled": true, "keywords": true }
+  }
+}
+```
+
+## Powerline motion
+
+The status/footer powerline is the session-long motion surface (welcome is only the overlay). Paint is a color overlay on the cached layout so segment scans stay cached and visible width stays stable.
+
+- **Streaming:** catalog style from thinking level (`xhigh`/`max` → rainbow, `high` → ember, otherwise a traveling shimmer).
+- **Keywords:** word-boundary, longest-first. Claude/Codex aliases (`ultrathink`, `ultra`, `think harder`, `think hard`, `think`, `max`, `xhigh`) plus wishcraft names (`lanternwake`, `kongming`, `nova`, …). Typing a trigger starts a ~1.6s burst, then holds the accent **while the draft still contains the word**. After submit the idle bar goes still (streaming catalog paint still runs during the turn). The last-prompt row colors the matched span.
+- Named looks take style, intensity, **and speed** from the 30-entry catalog, so `ultrathink`, `comet`, `aurora`, and `pulse` are different geometries — not one brightness curve.
+- Default on. `wishcraft.motion.enabled: false` or `wishcraft.motion.keywords: false` opt out. `WISHCRAFT_REDUCED_MOTION` and `NO_COLOR` skip paint. Host `prefers-reduced-motion` is not detected.
+
 ## Token budget
 
 `wishcraft.tokenBudget.daily` is a token count (input + output + cache). At 80% the cost segment turns warning-coloured; at 100% it turns red and welcome notifies. It never blocks a turn.

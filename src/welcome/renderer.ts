@@ -1,7 +1,13 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { ansi, colorEnabled, fgOnly, getFgAnsiCode } from "../theme/colors.ts";
 import { centerText, fitToWidth, getBoxLayout } from "./layout.ts";
-import type { WelcomeData, WelcomeWidget, WidgetRenderContext } from "./types.ts";
+import { renderLantern } from "./lantern.ts";
+import type {
+  WelcomeData,
+  WelcomePaint,
+  WelcomeWidget,
+  WidgetRenderContext,
+} from "./types.ts";
 
 import { QueueWidget } from "./widgets/queue-widget.ts";
 import { SessionsWidget } from "./widgets/sessions-widget.ts";
@@ -65,12 +71,22 @@ function gradientLine(line: string): string {
   return result;
 }
 
-function buildLeftColumn(ctx: WidgetRenderContext): string[] {
-  const logoColored = PI_LOGO.map((line) => gradientLine(line));
+function buildLeftColumn(
+  ctx: WidgetRenderContext,
+  paint: WelcomePaint,
+): string[] {
+  const lantern = renderLantern(
+    { now: paint.now ?? 0, still: paint.still ?? true },
+    ctx.width,
+  );
+  const mark =
+    lantern.length > 0
+      ? lantern
+      : PI_LOGO.map((line) => gradientLine(line));
 
   return [
     "",
-    ...logoColored.map((l) => centerText(l, ctx.width)),
+    ...mark.map((l) => centerText(l, ctx.width)),
     "",
     centerText(fgOnly("model", ctx.data.modelName), ctx.width),
     centerText(dim(ctx.data.providerName), ctx.width),
@@ -112,6 +128,7 @@ export function renderWelcomeBox(
   data: WelcomeData,
   termWidth: number,
   bottomLine: string,
+  paint: WelcomePaint = {},
 ): string[] {
   const layout = getBoxLayout(termWidth);
   if (!layout) {
@@ -151,7 +168,7 @@ export function renderWelcomeBox(
     color: fgOnly,
   };
 
-  const leftLines = buildLeftColumn(leftCtx);
+  const leftLines = buildLeftColumn(leftCtx, paint);
   const rightLines = buildRightColumn(rightCtx, rightWidgets);
 
   const lines: string[] = [];
