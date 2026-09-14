@@ -125,7 +125,7 @@ test("welcome renders the initial system prompt token estimate", () => {
   }
   assert.match(
     indexSource,
-    /new WelcomeHeader\(\s*readWelcomeData\(rt, ctx\),\s*\)/,
+    /new WelcomeHeader\(\s*readWelcomeData\(rt, ctx\)\s*\)/,
   );
 
   const overlayStart = indexSource.indexOf("export function setupWelcomeOverlay(");
@@ -147,7 +147,7 @@ test("welcome renders the initial system prompt token estimate", () => {
   assert.match(indexSource, /lanternAnimationEnabled\(/);
   assert.match(
     indexSource,
-    /new WelcomeComponent\(\s*data,\s*animateLantern,\s*\)/,
+    /new WelcomeComponent\(\s*data,\s*animateLantern\s*\)/,
   );
 });
 
