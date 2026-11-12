@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -44,6 +46,11 @@ interface ActivationProbe {
  */
 function probeActivation(timeoutMs = 30_000): Promise<ActivationProbe> {
   return new Promise((resolve, reject) => {
+    // A clean HOME keeps the probe hermetic: user-level skills and commands would
+    // otherwise load next to the extension and the host disambiguates duplicate
+    // command names with a `:N` suffix, so `/powerline` would arrive as
+    // `/powerline:1` on a developer machine and pass only on a clean CI runner.
+    const home = mkdtempSync(join(tmpdir(), "pi-host-rpc-home-"));
     const child = spawn(
       process.execPath,
       [
@@ -56,7 +63,11 @@ function probeActivation(timeoutMs = 30_000): Promise<ActivationProbe> {
         "--no-session",
         "--no-tools",
       ],
-      { cwd: repoRoot, stdio: ["pipe", "pipe", "pipe"] },
+      {
+        cwd: repoRoot,
+        stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env, HOME: home, XDG_CONFIG_HOME: join(home, ".config") },
+      },
     );
 
     const widgets = new Set<string>();
@@ -75,6 +86,11 @@ function probeActivation(timeoutMs = 30_000): Promise<ActivationProbe> {
         // ignore
       }
       child.kill();
+      try {
+        rmSync(home, { recursive: true, force: true });
+      } catch {
+        // best effort
+      }
       fn();
     };
 
@@ -89,6 +105,23 @@ function probeActivation(timeoutMs = 30_000): Promise<ActivationProbe> {
     }, timeoutMs);
 
     child.on("error", (err) => finish(() => reject(err)));
+
+    // A host that exits before the get_commands write would otherwise leave the
+    // probe pending until the timeout, and the failed write could surface as an
+    // uncaught EPIPE instead of a useful assertion failure.
+    child.stdin.on("error", () => {
+      // Reported through the close handler below.
+    });
+
+    child.on("close", (code, signal) => {
+      finish(() =>
+        reject(
+          new Error(
+            `pi host exited (code ${String(code)}, signal ${String(signal)}) before answering get_commands.\nstderr:\n${stderr}`,
+          ),
+        ),
+      );
+    });
 
     child.stderr.on("data", (chunk) => {
       stderr += chunk.toString();
@@ -184,7 +217,7 @@ test(
 );
 
 test(
-  "pi host activation renders the wishcraft powerline widgets",
+  "pi host activation registers the wishcraft powerline widgets and status keys",
   { skip },
   async () => {
     const { widgets, statuses } = await probeActivation();
