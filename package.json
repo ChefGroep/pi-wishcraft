@@ -49,6 +49,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "test:integration": "node --experimental-strip-types --test tests/pi-host-rpc.test.ts",
     "release": "node scripts/release.mjs",
     "prepublishOnly": "tsc --noEmit && node scripts/verify-package.mjs && npm run verify:pi-package",
     "verify:package": "node scripts/verify-package.mjs && node scripts/verify-pi-package-contract.mjs",
